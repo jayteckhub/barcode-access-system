@@ -94,6 +94,7 @@ app.get('/generate', (req, res) => {
   });
 });
 
+// Replace the baseUrl logic in your generate route:
 app.post('/generate', async (req, res) => {
   try {
     const { issuedTo, purpose, expiryHours, barcodeType = 'qrcode' } = req.body;
@@ -122,8 +123,10 @@ app.post('/generate', async (req, res) => {
     
     await barcode.save();
     
-    // Get base URL for QR code generation
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `${req.protocol}://${req.get('host')}`;
+    // FIXED: Use production URL directly for QR codes
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://barcodey.vercel.app/'  // Replace with your actual Vercel URL
+      : `${req.protocol}://${req.get('host')}`;
     
     // Generate barcode image with mobile URL
     const barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl);
