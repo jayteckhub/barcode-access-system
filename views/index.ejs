@@ -1,0 +1,119 @@
+<%- include('partials/header', { title: 'Home' }) %>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12 text-center mb-5">
+            <h1 class="display-4 mb-3">Secure Barcode Access System</h1>
+            <p class="lead">Generate, manage, and verify one-time use barcodes for secure access control</p>
+        </div>
+    </div>
+
+    <% if (success) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i><%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <% if (error) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i><%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <div class="text-primary mb-3">
+                        <i class="fas fa-plus-circle fa-3x"></i>
+                    </div>
+                    <h3 class="card-title">Generate Barcodes</h3>
+                    <p class="card-text">Create unique one-time use barcodes for individuals with optional expiration times.</p>
+                    <a href="/generate" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>Generate New
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <div class="text-success mb-3">
+                        <i class="fas fa-check-circle fa-3x"></i>
+                    </div>
+                    <h3 class="card-title">Verify Access</h3>
+                    <p class="card-text">Scan and validate barcodes in real-time. Automatic invalidation after first use.</p>
+                    <a href="/verify" class="btn btn-success btn-lg">
+                        <i class="fas fa-check me-2"></i>Verify Barcode
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <div class="text-info mb-3">
+                        <i class="fas fa-chart-bar fa-3x"></i>
+                    </div>
+                    <h3 class="card-title">Admin Dashboard</h3>
+                    <p class="card-text">Monitor all generated barcodes, track usage, and manage access history.</p>
+                    <a href="/admin" class="btn btn-info btn-lg">
+                        <i class="fas fa-tachometer-alt me-2"></i>View Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0"><i class="fas fa-shield-alt me-2"></i>System Features</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>One-Time Use:</strong> Each barcode automatically invalidates after first scan
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Real-time Verification:</strong> Instant access grant/deny responses
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Scanner Compatible:</strong> Works with USB and wireless barcode scanners
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Expiration Control:</strong> Optional time-based barcode expiration
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Audit Trail:</strong> Complete history of all access attempts
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Secure Design:</strong> Rate limiting and input validation
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

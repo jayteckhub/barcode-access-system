@@ -1,0 +1,157 @@
+<%- include('partials/header', { title: 'Admin Dashboard' }) %>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Admin Dashboard</h3>
+                    <span class="badge bg-light text-dark fs-6">Total: <%= totalBarcodes || 0 %></span>
+                </div>
+                <div class="card-body">
+                    <!-- Always define error variable even if null -->
+                    <% const error = typeof error !== 'undefined' ? error : null; %>
+                    
+                    <% if (error) { %>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i><%= error %>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    <% } %>
+
+                    <!-- Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card text-white bg-primary">
+                                <div class="card-body text-center">
+                                    <h4 class="card-title"><%= totalBarcodes || 0 %></h4>
+                                    <p class="card-text">Total Barcodes</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-white bg-success">
+                                <div class="card-body text-center">
+                                    <%
+                                        const activeBarcodes = barcodes ? barcodes.filter(b => !b.used && (!b.expiresAt || new Date(b.expiresAt) > new Date())).length : 0;
+                                    %>
+                                    <h4 class="card-title"><%= activeBarcodes %></h4>
+                                    <p class="card-text">Active</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-white bg-warning">
+                                <div class="card-body text-center">
+                                    <%
+                                        const usedBarcodes = barcodes ? barcodes.filter(b => b.used).length : 0;
+                                    %>
+                                    <h4 class="card-title"><%= usedBarcodes %></h4>
+                                    <p class="card-text">Used</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-white bg-danger">
+                                <div class="card-body text-center">
+                                    <%
+                                        const expiredBarcodes = barcodes ? barcodes.filter(b => !b.used && b.expiresAt && new Date(b.expiresAt) <= new Date()).length : 0;
+                                    %>
+                                    <h4 class="card-title"><%= expiredBarcodes %></h4>
+                                    <p class="card-text">Expired</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barcodes Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Issued To</th>
+                                    <th>Purpose</th>
+                                    <th>Issued At</th>
+                                    <th>Used At</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (!barcodes || barcodes.length === 0) { %>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4">
+                                            <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
+                                            <p class="text-muted">No barcodes generated yet.</p>
+                                            <a href="/generate" class="btn btn-primary">Generate First Barcode</a>
+                                        </td>
+                                    </tr>
+                                <% } else { %>
+                                    <% barcodes.forEach(barcode => { %>
+                                        <tr>
+                                            <td>
+                                                <code class="font-monospace" style="font-size: 0.8em;"><%= barcode.code %></code>
+                                            </td>
+                                            <td><%= barcode.issuedTo %></td>
+                                            <td><%= barcode.purpose || '-' %></td>
+                                            <td>
+                                                <% if (barcode.issuedAt && moment) { %>
+                                                    <%= moment(barcode.issuedAt).format('YYYY-MM-DD HH:mm') %>
+                                                <% } else if (barcode.issuedAt) { %>
+                                                    <%= new Date(barcode.issuedAt).toLocaleDateString() %>
+                                                <% } else { %>
+                                                    -
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (barcode.usedAt && moment) { %>
+                                                    <%= moment(barcode.usedAt).format('YYYY-MM-DD HH:mm') %>
+                                                <% } else if (barcode.usedAt) { %>
+                                                    <%= new Date(barcode.usedAt).toLocaleDateString() %>
+                                                <% } else { %>
+                                                    -
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (barcode.used) { %>
+                                                    <span class="badge bg-warning">Used</span>
+                                                <% } else if (barcode.expiresAt && new Date(barcode.expiresAt) <= new Date()) { %>
+                                                    <span class="badge bg-danger">Expired</span>
+                                                <% } else { %>
+                                                    <span class="badge bg-success">Active</span>
+                                                <% } %>
+                                            </td>
+                                        </tr>
+                                    <% }); %>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <% if (totalPages > 1) { %>
+                        <nav aria-label="Barcode pagination">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+                                    <a class="page-link" href="?page=<%= currentPage - 1 %>&limit=<%= limit %>">Previous</a>
+                                </li>
+                                
+                                <% for (let i = 1; i <= totalPages; i++) { %>
+                                    <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                                        <a class="page-link" href="?page=<%= i %>&limit=<%= limit %>"><%= i %></a>
+                                    </li>
+                                <% } %>
+                                
+                                <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+                                    <a class="page-link" href="?page=<%= currentPage + 1 %>&limit=<%= limit %>">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

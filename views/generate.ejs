@@ -1,0 +1,354 @@
+<%- include('partials/header', { title: 'Generate Barcode' }) %>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Generate New Barcode</h3>
+                </div>
+                <div class="card-body">
+                    <% if (error) { %>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i><%= error %>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    <% } %>
+
+                    <form method="POST" action="/generate">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="issuedTo" class="form-label">
+                                        <strong>Issued To *</strong>
+                                    </label>
+                                    <input type="text" class="form-control form-control-lg" id="issuedTo" name="issuedTo" 
+                                           placeholder="Enter person's name or identifier" required
+                                           value="<%= barcode ? barcode.issuedTo : '' %>">
+                                    <div class="form-text">The name of the person this barcode is issued to.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="purpose" class="form-label">
+                                        <strong>Purpose (Optional)</strong>
+                                    </label>
+                                    <input type="text" class="form-control" id="purpose" name="purpose" 
+                                           placeholder="e.g., Event Access, Visitor Pass, Employee Entry"
+                                           value="<%= barcode ? barcode.purpose : '' %>">
+                                    <div class="form-text">Optional description for this barcode's intended use.</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="expiryHours" class="form-label">
+                                        <strong>Expiration (Optional)</strong>
+                                    </label>
+                                    <select class="form-select" id="expiryHours" name="expiryHours">
+                                        <option value="">No expiration</option>
+                                        <option value="1">1 hour</option>
+                                        <option value="4">4 hours</option>
+                                        <option value="24">24 hours</option>
+                                        <option value="168">1 week</option>
+                                        <option value="720">30 days</option>
+                                    </select>
+                                    <div class="form-text">Set when this barcode should automatically expire.</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="barcodeType" class="form-label">
+                                        <strong>Barcode Type</strong>
+                                    </label>
+                                    <select class="form-select" id="barcodeType" name="barcodeType">
+                                        <option value="qrcode" selected>QR Code (Recommended for phones)</option>
+                                        <option value="code128">Code 128 (Standard barcode)</option>
+                                    </select>
+                                    <div class="form-text">QR codes work best with phone cameras.</div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-barcode me-2"></i>Generate Barcode
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="fas fa-info-circle me-2"></i>Scanning Tips</h5>
+                                        <ul class="small">
+                                            <li>Use <strong>QR Code</strong> for best phone camera scanning</li>
+                                            <li>Ensure good lighting when scanning</li>
+                                            <li>Hold phone steady 6-12 inches from code</li>
+                                            <li>Download the image for printing</li>
+                                            <li>Test scan immediately after generation</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <% if (barcode) { %>
+                        <hr class="my-4">
+                        
+                        <div class="alert alert-success">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-check-circle fa-2x me-3"></i>
+                                <div>
+                                    <h4 class="alert-heading mb-1">Barcode Generated Successfully!</h4>
+                                    <p class="mb-0">This barcode can be scanned once for access verification.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header bg-dark text-white">
+                                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Barcode Details</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <strong>Barcode Code:</strong>
+                                            <div class="input-group mt-1">
+                                                <input type="text" class="form-control scanner-input font-monospace" 
+                                                       value="<%= barcode.code %>" readonly id="barcodeCode">
+                                                <button class="btn btn-outline-secondary" type="button" 
+                                                        onclick="copyToClipboard('<%= barcode.code %>')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                            <small class="text-muted">Unique identifier for this barcode</small>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <strong>Issued To:</strong>
+                                            <p class="mb-1 fs-5"><%= barcode.issuedTo %></p>
+                                        </div>
+
+                                        <% if (barcode.purpose) { %>
+                                            <div class="mb-3">
+                                                <strong>Purpose:</strong>
+                                                <p class="mb-1"><%= barcode.purpose %></p>
+                                            </div>
+                                        <% } %>
+
+                                        <% if (barcode.expiresAt) { %>
+                                            <div class="mb-3">
+                                                <strong>Expires:</strong>
+                                                <p class="mb-1 text-warning">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    <%= new Date(barcode.expiresAt).toLocaleString() %>
+                                                </p>
+                                            </div>
+                                        <% } else { %>
+                                            <div class="mb-3">
+                                                <strong>Expires:</strong>
+                                                <p class="mb-1 text-success">
+                                                    <i class="fas fa-infinity me-1"></i>
+                                                    No expiration
+                                                </p>
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0"><i class="fas fa-qrcode me-2"></i>Scannable Barcode</h5>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-light" onclick="testScan()">
+                                                <i class="fas fa-camera me-1"></i>Test Scan
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- In the barcode display section, replace the card body with: -->
+                                    <div class="card-body text-center">
+                                        <!-- Large barcode display -->
+                                        <div class="mb-3 p-3 border rounded bg-white">
+                                            <img src="<%= barcode.image %>" 
+                                                alt="Barcode <%= barcode.code %>" 
+                                                class="barcode-image img-fluid"
+                                                style="max-width: 300px; max-height: 300px;"
+                                                id="barcodeImage">
+                                            <div class="mt-2">
+                                                <small class="text-muted">Scan this code with your phone camera</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Scan URL for testing -->
+                                        <div class="mb-3">
+                                            <strong>Scan URL:</strong>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control form-control-sm" 
+                                                    value="<%= barcode.scanUrl %>" readonly id="scanUrl">
+                                                <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                                        onclick="copyToClipboard('<%= barcode.scanUrl %>')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                            <small class="text-muted">This URL is encoded in the QR code</small>
+                                        </div>
+
+
+                                        <div class="mb-3">
+                                        <strong>Mobile Scan URL:</strong>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control form-control-sm" 
+                                                value="<%= barcode.mobileUrl %>" readonly id="mobileUrl">
+                                            <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                                    onclick="copyToClipboard('<%= barcode.mobileUrl %>')">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">Phones will open this URL when scanning the QR code</small>
+                                    </div>
+
+                                    <!-- Update the test button -->
+                                    <a href="<%= barcode.mobileUrl %>" 
+                                    class="btn btn-warning me-2"
+                                    target="_blank">
+                                        <i class="fas fa-mobile-alt me-2"></i>Test Mobile Scan
+                                    </a>
+                                        <!-- Action buttons -->
+                                        <div class="d-grid gap-2 d-md-block">
+                                            <a href="/download/<%= barcode.code %>" 
+                                            class="btn btn-success me-2"
+                                            download="barcode-<%= barcode.code %>.png">
+                                                <i class="fas fa-download me-2"></i>Download Image
+                                            </a>
+                                            <button class="btn btn-outline-primary me-2" onclick="printBarcode()">
+                                                <i class="fas fa-print me-2"></i>Print
+                                            </button>
+                                            <a href="<%= barcode.scanUrl %>" 
+                                            class="btn btn-warning me-2"
+                                            target="_blank">
+                                                <i class="fas fa-external-link-alt me-2"></i>Test Scan Link
+                                            </a>
+                                            <a href="/generate" class="btn btn-outline-secondary">
+                                                <i class="fas fa-plus me-2"></i>Generate Another
+                                            </a>
+                                        </div>
+
+                                        <!-- Test instructions -->
+                                        <div class="mt-3 p-3 bg-light rounded">
+                                            <h6><i class="fas fa-mobile-alt me-2"></i>How to Test Phone Scanning</h6>
+                                            <ol class="small text-start">
+                                                <li>Download the QR code image to your phone, OR</li>
+                                                <li>Open this page on your phone and scan the QR code, OR</li>
+                                                <li>Click "Test Scan Link" to simulate scanning</li>
+                                                <li>When scanned, it should automatically show "Access Granted"</li>
+                                            </ol>
+                                            
+                                            <div class="alert alert-info small">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                <strong>Note:</strong> The QR code contains the URL: <code><%= barcode.scanUrl %></code><br>
+                                                When scanned, phones will open this URL and automatically verify access.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Usage Instructions -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Usage Instructions</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <h6><i class="fas fa-mobile-alt me-2 text-primary"></i>For Phone Scanning</h6>
+                                                <ul class="small">
+                                                    <li>Download the image and share it</li>
+                                                    <li>User opens image on their phone</li>
+                                                    <li>Use phone camera to scan the QR code</li>
+                                                    <li>Camera will detect and open verification link</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6><i class="fas fa-print me-2 text-success"></i>For Physical Printing</h6>
+                                                <ul class="small">
+                                                    <li>Download the barcode image</li>
+                                                    <li>Print on paper or card</li>
+                                                    <li>Ensure good contrast (black on white)</li>
+                                                    <li>Test scan after printing</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6><i class="fas fa-shield-alt me-2 text-warning"></i>Security Notes</h6>
+                                                <ul class="small">
+                                                    <li>Each code works only once</li>
+                                                    <li>Cannot be reused after scanning</li>
+                                                    <li>Optional expiration for extra security</li>
+                                                    <li>Keep codes secure until distribution</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function testScan() {
+    const instructions = document.getElementById('testScanInstructions');
+    instructions.classList.toggle('d-none');
+}
+
+function printBarcode() {
+    const barcodeImage = document.getElementById('barcodeImage');
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Print Barcode</title>
+                <style>
+                    body { text-align: center; padding: 20px; }
+                    img { max-width: 100%; height: auto; }
+                    .details { margin: 20px 0; }
+                </style>
+            </head>
+            <body>
+                <h2>Access Barcode</h2>
+                <div class="details">
+                    <strong>Issued To:</strong> <%= barcode ? barcode.issuedTo : '' %><br>
+                    <% if (barcode && barcode.purpose) { %>
+                        <strong>Purpose:</strong> <%= barcode.purpose %><br>
+                    <% } %>
+                    <strong>Code:</strong> <%= barcode ? barcode.code : '' %>
+                </div>
+                <img src="${barcodeImage.src}" alt="Barcode">
+                <p><small>Generated on ${new Date().toLocaleString()}</small></p>
+                <script>
+                    window.onload = function() { window.print(); }
+                <\/script>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// Auto-select barcode text when clicked
+document.addEventListener('DOMContentLoaded', function() {
+    const barcodeInput = document.getElementById('barcodeCode');
+    if (barcodeInput) {
+        barcodeInput.addEventListener('click', function() {
+            this.select();
+        });
+    }
+});
+</script>
+
+<%- include('partials/footer') %>

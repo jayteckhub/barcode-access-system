@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Control System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .access-card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .access-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: <%= result.access === 'granted' ? 'linear-gradient(90deg, #00b09b, #96c93d)' : 'linear-gradient(90deg, #ff416c, #ff4b2b)' %>;
+        }
+        
+        .status-icon {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 40px;
+            background: <%= result.access === 'granted' ? 'linear-gradient(135deg, #00b09b, #96c93d)' : 'linear-gradient(135deg, #ff416c, #ff4b2b)' %>;
+            color: white;
+            box-shadow: 0 10px 30px <%= result.access === 'granted' ? 'rgba(0, 176, 155, 0.3)' : 'rgba(255, 65, 108, 0.3)' %>;
+        }
+        
+        .status-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: <%= result.access === 'granted' ? 'linear-gradient(135deg, #00b09b, #96c93d)' : 'linear-gradient(135deg, #ff416c, #ff4b2b)' %>;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .person-name {
+            font-size: 28px;
+            font-weight: 800;
+            color: #2d3748;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .message {
+            font-size: 18px;
+            color: #718096;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        
+        .details {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 25px 0;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #edf2f7;
+        }
+        
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .detail-value {
+            font-weight: 500;
+            color: #2d3748;
+        }
+        
+        .timestamp {
+            font-size: 14px;
+            color: #a0aec0;
+            margin-top: 20px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: <%= result.access === 'granted' ? '#c6f6d5' : '#fed7d7' %>;
+            color: <%= result.access === 'granted' ? '#22543d' : '#742a2a' %>;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .animation-granted {
+            animation: pulse 2s infinite;
+        }
+        
+        .animation-denied {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            color: #667eea;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="access-card">
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i> SECURE
+        </div>
+        
+        <div class="status-icon <%= result.access === 'granted' ? 'animation-granted' : 'animation-denied' %>">
+            <i class="fas <%= result.access === 'granted' ? 'fa-check' : 'fa-times' %>"></i>
+        </div>
+        
+        <h1 class="status-title">
+            <%= result.access === 'granted' ? 'ACCESS GRANTED' : 'ACCESS DENIED' %>
+        </h1>
+        
+        <% if (result.issuedTo) { %>
+            <div class="person-name">
+                <i class="fas fa-user me-2"></i><%= result.issuedTo %>
+            </div>
+        <% } %>
+        
+        <p class="message"><%= result.message %></p>
+        
+        <% if (result.access === 'granted') { %>
+            <div class="badge">
+                <i class="fas fa-clock me-1"></i>One-Time Access • Used at <%= new Date().toLocaleTimeString() %>
+            </div>
+        <% } else { %>
+            <div class="badge">
+                <i class="fas fa-lock me-1"></i>Access Restricted
+            </div>
+        <% } %>
+        
+        <% if (result.access === 'granted') { %>
+            <div class="details">
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-id-card me-2"></i>Visitor:</span>
+                    <span class="detail-value"><%= result.issuedTo %></span>
+                </div>
+                <% if (result.purpose) { %>
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fas fa-bullseye me-2"></i>Purpose:</span>
+                        <span class="detail-value"><%= result.purpose %></span>
+                    </div>
+                <% } %>
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-calendar me-2"></i>Time:</span>
+                    <span class="detail-value"><%= new Date().toLocaleString() %></span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-shield-alt me-2"></i>Status:</span>
+                    <span class="detail-value" style="color: #00b09b; font-weight: 700;">VERIFIED</span>
+                </div>
+            </div>
+        <% } %>
+        
+        <div class="timestamp">
+            Secure Access Control System • <%= new Date().getFullYear() %>
+        </div>
+    </div>
+
+    <script>
+        // Auto-close after 10 seconds if access granted
+        <% if (result.access === 'granted') { %>
+            setTimeout(() => {
+                document.body.style.opacity = '0';
+                setTimeout(() => {
+                    window.close();
+                }, 500);
+            }, 10000);
+        <% } %>
+        
+        // Add click to close functionality
+        document.addEventListener('click', () => {
+            document.body.style.opacity = '0';
+            setTimeout(() => {
+                window.close();
+            }, 500);
+        });
+        
+        // Add keyboard close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                document.body.style.opacity = '0';
+                setTimeout(() => {
+                    window.close();
+                }, 500);
+            }
+        });
+    </script>
+</body>
+</html>
