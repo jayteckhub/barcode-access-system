@@ -229,88 +229,90 @@
                                         </div>
                                     </div>
                                     <!-- In the barcode display section, replace the card body with: -->
-                                   <!-- In the barcode display card, update the image section -->
-<div class="card-body text-center">
-    <!-- High-resolution barcode display -->
-    <div class="mb-3 p-4 border rounded bg-white">
-        <div class="alert alert-info d-flex align-items-center">
-            <i class="fas fa-info-circle me-2"></i>
-            <small>4K High-Resolution QR Code - Perfect for printing and scanning</small>
-        </div>
-        
-        <img src="<%= barcode.image %>" 
-             alt="Barcode <%= barcode.code %>" 
-             class="barcode-image img-fluid"
-             style="max-width: 400px; max-height: 400px; width: 100%; height: auto;"
-             id="barcodeImage">
-        <div class="mt-2">
-            <small class="text-muted">
-                <i class="fas fa-expand-arrows-alt me-1"></i>
-                4K Resolution • Perfect Square • Optimized for Mobile Scanning
-            </small>
-        </div>
-    </div>
+                                    <div class="card-body text-center">
+                                        <!-- Large barcode display -->
+                                        <div class="mb-3 p-3 border rounded bg-white">
+                                            <img src="<%= barcode.image %>" 
+                                                alt="Barcode <%= barcode.code %>" 
+                                                class="barcode-image img-fluid"
+                                                style="max-width: 300px; max-height: 300px;"
+                                                id="barcodeImage">
+                                            <div class="mt-2">
+                                                <small class="text-muted">Scan this code with your phone camera</small>
+                                            </div>
+                                        </div>
 
-    <!-- Quality information -->
-    <div class="row mt-3">
-        <div class="col-md-6">
-            <div class="card bg-light">
-                <div class="card-body">
-                    <h6><i class="fas fa-camera me-2"></i>Image Quality</h6>
-                    <ul class="small mb-0">
-                        <li><strong>Resolution:</strong> 4K (3840x3840)</li>
-                        <li><strong>Aspect Ratio:</strong> Perfect Square</li>
-                        <li><strong>Format:</strong> PNG (Lossless)</li>
-                        <li><strong>Optimized for:</strong> Mobile Scanning</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card bg-light">
-                <div class="card-body">
-                    <h6><i class="fas fa-mobile-alt me-2"></i>Scanning Tips</h6>
-                    <ul class="small mb-0">
-                        <li>Works with all phone cameras</li>
-                        <li>Clear scanning from 6-24 inches</li>
-                        <li>Perfect for printing &amp; posters</li>
-                        <li>High contrast for reliability</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
+                                        <!-- Scan URL for testing -->
+                                        <div class="mb-3">
+                                            <strong>Scan URL:</strong>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control form-control-sm" 
+                                                    value="<%= barcode.scanUrl %>" readonly id="scanUrl">
+                                                <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                                        onclick="copyToClipboard('<%= barcode.scanUrl %>')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                            <small class="text-muted">This URL is encoded in the QR code</small>
+                                        </div>
 
-    <!-- Download section with quality info -->
-    <div class="mt-4">
-        <strong>Download Options:</strong>
-        <div class="btn-group mt-2" role="group">
-            <a href="/download/<%= barcode.code %>?bg=<%= barcode.colors.background %>&fg=<%= barcode.colors.foreground %>&border=<%= barcode.colors.border %>" 
-               class="btn btn-success"
-               download="barcode-<%= barcode.code %>.png">
-                <i class="fas fa-download me-2"></i>Download 4K PNG
-            </a>
-            <button type="button" class="btn btn-outline-success dropdown-toggle dropdown-toggle-split" 
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="visually-hidden">More download options</span>
-            </button>
-            <ul class="dropdown-menu">
-                <li>
-                    <a class="dropdown-item" href="/download/<%= barcode.code %>?bg=<%= barcode.colors.background %>&fg=<%= barcode.colors.foreground %>&border=<%= barcode.colors.border %>&scale=20"
-                       download="barcode-<%= barcode.code %>-hd.png">
-                        <i class="fas fa-download me-2"></i>HD Version (Faster)
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item" href="#" onclick="printBarcode()">
-                        <i class="fas fa-print me-2"></i>Print Directly
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</div>
+
+                                        <div class="mb-3">
+                                        <strong>Mobile Scan URL:</strong>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control form-control-sm" 
+                                                value="<%= barcode.mobileUrl %>" readonly id="mobileUrl">
+                                            <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                                    onclick="copyToClipboard('<%= barcode.mobileUrl %>')">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">Phones will open this URL when scanning the QR code</small>
+                                    </div>
+
+                                    <!-- Update the test button -->
+                                    <a href="<%= barcode.mobileUrl %>" 
+                                    class="btn btn-warning me-2"
+                                    target="_blank">
+                                        <i class="fas fa-mobile-alt me-2"></i>Test Mobile Scan
+                                    </a>
+                                        <!-- Action buttons -->
+                                        <div class="d-grid gap-2 d-md-block">
+                                            <a href="/download/<%= barcode.code %>" 
+                                            class="btn btn-success me-2"
+                                            download="barcode-<%= barcode.code %>.png">
+                                                <i class="fas fa-download me-2"></i>Download Image
+                                            </a>
+                                            <button class="btn btn-outline-primary me-2" onclick="printBarcode()">
+                                                <i class="fas fa-print me-2"></i>Print
+                                            </button>
+                                            <a href="<%= barcode.scanUrl %>" 
+                                            class="btn btn-warning me-2"
+                                            target="_blank">
+                                                <i class="fas fa-external-link-alt me-2"></i>Test Scan Link
+                                            </a>
+                                            <a href="/generate" class="btn btn-outline-secondary">
+                                                <i class="fas fa-plus me-2"></i>Generate Another
+                                            </a>
+                                        </div>
+
+                                        <!-- Test instructions -->
+                                        <div class="mt-3 p-3 bg-light rounded">
+                                            <h6><i class="fas fa-mobile-alt me-2"></i>How to Test Phone Scanning</h6>
+                                            <ol class="small text-start">
+                                                <li>Download the QR code image to your phone, OR</li>
+                                                <li>Open this page on your phone and scan the QR code, OR</li>
+                                                <li>Click "Test Scan Link" to simulate scanning</li>
+                                                <li>When scanned, it should automatically show "Access Granted"</li>
+                                            </ol>
+                                            
+                                            <div class="alert alert-info small">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                <strong>Note:</strong> The QR code contains the URL: <code><%= barcode.scanUrl %></code><br>
+                                                When scanned, phones will open this URL and automatically verify access.
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
