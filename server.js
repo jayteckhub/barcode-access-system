@@ -38,39 +38,63 @@ const generateUniqueCode = () => {
 // Generate barcode image
 const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
   return new Promise((resolve, reject) => {
-    // Use mobile-scan route for QR codes
     const encodedText = type === 'qrcode' ? `${baseUrl}/mobile-scan/${text}` : text;
     
-    // Default colors
     const defaultColors = {
-      background: 'FFFFFF', // White
-      foreground: '000000', // Black
-      border: '000000'      // Black
+      background: 'FFFFFF',
+      foreground: '000000',
+      border: '000000'
     };
     
-    // Merge with provided colors
     const finalColors = { ...defaultColors, ...colors };
     
+    // 4K optimized settings - 3840x3840 pixels (perfect square)
     const options = {
       bcid: type,
       text: encodedText,
-      scale: type === 'qrcode' ? 8 : 3,
+      scale: 40, // Very high scale for 4K
       height: 10,
+      width: 10, // Force perfect square
       includetext: false,
+      textxalign: 'center',
+      textyalign: 'below',
       backgroundcolor: finalColors.background,
       barcolor: finalColors.foreground,
       bordercolor: finalColors.border,
+      paddingwidth: 60, // More padding for better scanning
+      paddingheight: 60,
+      showborder: true,
+      borderwidth: 10,
+      // QR code specific optimizations
+      format: 'png',
+      alttext: '',
+      rotate: 'N'
     };
 
-    // For QR codes, we can adjust the style
+    // Additional QR code optimizations
     if (type === 'qrcode') {
-      options.scale = 8;
-      options.height = 10;
+      options.scale = 45; // Even higher for QR codes
+      options.paddingwidth = 80;
+      options.paddingheight = 80;
+      options.borderwidth = 15;
+      options.alttext = `Access Code: ${text}`;
     }
 
+    console.log(`Generating ${type} with scale ${options.scale} for 4K resolution`);
+
     bwipjs.toBuffer(options, (err, png) => {
-      if (err) reject(err);
-      else resolve(png);
+      if (err) {
+        console.error('High-res barcode generation failed:', err);
+        // Fallback to lower resolution
+        const fallbackOptions = { ...options, scale: 20 };
+        bwipjs.toBuffer(fallbackOptions, (fallbackErr, fallbackPng) => {
+          if (fallbackErr) reject(fallbackErr);
+          else resolve(fallbackPng);
+        });
+      } else {
+        console.log(`Successfully generated 4K ${type} (${png.length} bytes)`);
+        resolve(png);
+      }
     });
   });
 };
@@ -151,7 +175,7 @@ app.post('/generate', async (req, res) => {
     
     // Use production URL directly for QR codes
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://barcodey.vercel.app'  // Replace with your actual Vercel URL
+      ? 'https://bar-event.vercel.app/'  // Replace with your actual Vercel URL
       : `${req.protocol}://${req.get('host')}`;
     
     // Color options
@@ -418,11 +442,11 @@ app.get('/admin', async (req, res) => {
 app.get('/download/:code', async (req, res) => {
   try {
     const { code } = req.params;
-    const { bg = 'FFFFFF', fg = '000000', border = '000000' } = req.query;
+    const { bg = 'FFFFFF', fg = '000000', border = '000000', scale = '45' } = req.query;
     
     // Use production URL
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://barcodey.vercel.app'
+      ? 'https://bar-event.vercel.app'  // DON'T FORGET TO REPLACE THIS!
       : `${req.protocol}://${req.get('host')}`;
     
     const colors = {
@@ -431,17 +455,49 @@ app.get('/download/:code', async (req, res) => {
       border: border.replace('#', '')
     };
     
-    const barcodeImage = await generateBarcodeImage(code, 'qrcode', baseUrl, colors);
+    // Custom scale for download
+    const scaleValue = parseInt(scale) || 45;
+    
+    const barcodeImage = await generateHighResBarcodeImage(code, 'qrcode', baseUrl, colors, scaleValue);
     
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Content-Disposition', `attachment; filename=barcode-${code}.png`);
+    res.setHeader('Content-Disposition', `attachment; filename="barcode-${code}-4k.png"`);
+    res.setHeader('Content-Length', barcodeImage.length);
     res.send(barcodeImage);
     
   } catch (error) {
     console.error('Download error:', error);
-    res.status(500).send('Error generating download');
+    res.status(500).send('Error generating high-resolution download');
   }
 });
+
+// Separate function for high-res generation
+const generateHighResBarcodeImage = (text, type, baseUrl, colors, scale = 45) => {
+  return new Promise((resolve, reject) => {
+    const encodedText = type === 'qrcode' ? `${baseUrl}/mobile-scan/${text}` : text;
+    
+    const options = {
+      bcid: type,
+      text: encodedText,
+      scale: scale,
+      height: 10,
+      width: 10,
+      includetext: false,
+      backgroundcolor: colors.background,
+      barcolor: colors.foreground,
+      bordercolor: colors.border,
+      paddingwidth: 80,
+      paddingheight: 80,
+      showborder: true,
+      borderwidth: 15
+    };
+
+    bwipjs.toBuffer(options, (err, png) => {
+      if (err) reject(err);
+      else resolve(png);
+    });
+  });
+};
 
 // Health check endpoint
 app.get('/health', (req, res) => {

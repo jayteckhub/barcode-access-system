@@ -14,6 +14,22 @@
         .barcode-image { max-width: 100%; height: auto; border: 1px solid #dee2e6; border-radius: 5px; }
         .status-badge { font-size: 0.8em; }
         .scanner-input { font-family: 'Courier New', monospace; font-size: 1.2em; letter-spacing: 2px; }
+
+        .barcode-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    -ms-interpolation-mode: nearest-neighbor;
+}
+
+.quality-badge {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
     </style>
 </head>
 <body>
