@@ -36,10 +36,20 @@ const generateUniqueCode = () => {
 };
 
 // Generate barcode image
-const generateBarcodeImage = (text, type = 'qrcode', baseUrl) => {
+const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
   return new Promise((resolve, reject) => {
     // Use mobile-scan route for QR codes
     const encodedText = type === 'qrcode' ? `${baseUrl}/mobile-scan/${text}` : text;
+    
+    // Default colors
+    const defaultColors = {
+      background: 'FFFFFF', // White
+      foreground: '000000', // Black
+      border: '000000'      // Black
+    };
+    
+    // Merge with provided colors
+    const finalColors = { ...defaultColors, ...colors };
     
     const options = {
       bcid: type,
@@ -47,7 +57,16 @@ const generateBarcodeImage = (text, type = 'qrcode', baseUrl) => {
       scale: type === 'qrcode' ? 8 : 3,
       height: 10,
       includetext: false,
+      backgroundcolor: finalColors.background,
+      barcolor: finalColors.foreground,
+      bordercolor: finalColors.border,
     };
+
+    // For QR codes, we can adjust the style
+    if (type === 'qrcode') {
+      options.scale = 8;
+      options.height = 10;
+    }
 
     bwipjs.toBuffer(options, (err, png) => {
       if (err) reject(err);
@@ -55,7 +74,6 @@ const generateBarcodeImage = (text, type = 'qrcode', baseUrl) => {
     });
   });
 };
-
 // MongoDB connection with better error handling
 const connectDB = async () => {
   try {
@@ -97,7 +115,15 @@ app.get('/generate', (req, res) => {
 // Replace the baseUrl logic in your generate route:
 app.post('/generate', async (req, res) => {
   try {
-    const { issuedTo, purpose, expiryHours, barcodeType = 'qrcode' } = req.body;
+    const { 
+      issuedTo, 
+      purpose, 
+      expiryHours, 
+      barcodeType = 'qrcode',
+      backgroundColor = 'FFFFFF',
+      foregroundColor = '000000',
+      borderColor = '000000'
+    } = req.body;
     
     if (!issuedTo) {
       return res.render('generate', {
@@ -123,13 +149,20 @@ app.post('/generate', async (req, res) => {
     
     await barcode.save();
     
-    // FIXED: Use production URL directly for QR codes
+    // Use production URL directly for QR codes
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://barcodey.vercel.app/'  // Replace with your actual Vercel URL
+      ? 'https://barcodey.vercel.app'  // Replace with your actual Vercel URL
       : `${req.protocol}://${req.get('host')}`;
     
-    // Generate barcode image with mobile URL
-    const barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl);
+    // Color options
+    const colors = {
+      background: backgroundColor.replace('#', ''),
+      foreground: foregroundColor.replace('#', ''),
+      border: borderColor.replace('#', '')
+    };
+    
+    // Generate barcode image with colors
+    const barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl, colors);
     const barcodeDataUrl = `data:image/png;base64,${barcodeImage.toString('base64')}`;
     
     res.render('generate', {
@@ -142,7 +175,8 @@ app.post('/generate', async (req, res) => {
         image: barcodeDataUrl,
         imageBase64: barcodeImage.toString('base64'),
         scanUrl: `${baseUrl}/mobile-scan/${code}`,
-        mobileUrl: `${baseUrl}/mobile-scan/${code}`
+        mobileUrl: `${baseUrl}/mobile-scan/${code}`,
+        colors: colors
       },
       error: null
     });
@@ -384,9 +418,20 @@ app.get('/admin', async (req, res) => {
 app.get('/download/:code', async (req, res) => {
   try {
     const { code } = req.params;
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `${req.protocol}://${req.get('host')}`;
+    const { bg = 'FFFFFF', fg = '000000', border = '000000' } = req.query;
     
-    const barcodeImage = await generateBarcodeImage(code, 'qrcode', baseUrl);
+    // Use production URL
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://barcodey.vercel.app'
+      : `${req.protocol}://${req.get('host')}`;
+    
+    const colors = {
+      background: bg.replace('#', ''),
+      foreground: fg.replace('#', ''),
+      border: border.replace('#', '')
+    };
+    
+    const barcodeImage = await generateBarcodeImage(code, 'qrcode', baseUrl, colors);
     
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Content-Disposition', `attachment; filename=barcode-${code}.png`);

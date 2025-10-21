@@ -64,6 +64,70 @@
                                     <div class="form-text">QR codes work best with phone cameras.</div>
                                 </div>
 
+                                                                <!-- Add this section to your form, after the barcode type selection -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <label class="form-label"><strong>Barcode Colors</strong></label>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="backgroundColor" class="form-label">Background Color</label>
+                                                    <div class="input-group">
+                                                        <input type="color" class="form-control form-control-color" id="backgroundColor" 
+                                                            name="backgroundColor" value="#FFFFFF" title="Choose background color">
+                                                        <input type="text" class="form-control" value="#FFFFFF" 
+                                                            onchange="document.getElementById('backgroundColor').value = this.value">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="foregroundColor" class="form-label">Barcode Color</label>
+                                                    <div class="input-group">
+                                                        <input type="color" class="form-control form-control-color" id="foregroundColor" 
+                                                            name="foregroundColor" value="#000000" title="Choose barcode color">
+                                                        <input type="text" class="form-control" value="#000000"
+                                                            onchange="document.getElementById('foregroundColor').value = this.value">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="borderColor" class="form-label">Border Color</label>
+                                                    <div class="input-group">
+                                                        <input type="color" class="form-control form-control-color" id="borderColor" 
+                                                            name="borderColor" value="#000000" title="Choose border color">
+                                                        <input type="text" class="form-control" value="#000000"
+                                                            onchange="document.getElementById('borderColor').value = this.value">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Color Presets -->
+                                        <div class="mb-3">
+                                            <label class="form-label">Quick Color Presets:</label>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-dark" onclick="setColors('#FFFFFF', '#000000', '#000000')">
+                                                    Classic Black
+                                                </button>
+                                                <button type="button" class="btn btn-outline-primary" onclick="setColors('#FFFFFF', '#007BFF', '#007BFF')">
+                                                    Blue Theme
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success" onclick="setColors('#FFFFFF', '#28A745', '#28A745')">
+                                                    Green Theme
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" onclick="setColors('#FFFFFF', '#DC3545', '#DC3545')">
+                                                    Red Theme
+                                                </button>
+                                                <button type="button" class="btn btn-outline-warning" onclick="setColors('#FFFF00', '#000000', '#000000')">
+                                                    Yellow Background
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="d-grid">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-barcode me-2"></i>Generate Barcode
@@ -339,6 +403,53 @@ function printBarcode() {
     `);
     printWindow.document.close();
 }
+
+// Color preset function
+function setColors(bg, fg, border) {
+    document.getElementById('backgroundColor').value = bg;
+    document.getElementById('foregroundColor').value = fg;
+    document.getElementById('borderColor').value = border;
+    
+    // Update text inputs
+    document.querySelectorAll('input[type="color"]').forEach(input => {
+        input.nextElementSibling.value = input.value;
+    });
+}
+
+// Sync color inputs
+document.addEventListener('DOMContentLoaded', function() {
+    // Sync color pickers with text inputs
+    document.querySelectorAll('input[type="color"]').forEach(colorInput => {
+        colorInput.addEventListener('input', function() {
+            this.nextElementSibling.value = this.value;
+        });
+        
+        colorInput.nextElementSibling.addEventListener('input', function() {
+            const colorInput = this.previousElementSibling;
+            if (this.value.match(/^#[0-9A-F]{6}$/i)) {
+                colorInput.value = this.value;
+            }
+        });
+    });
+});
+
+// Update download link with color parameters
+function updateDownloadLink() {
+    const bg = document.getElementById('backgroundColor').value.replace('#', '');
+    const fg = document.getElementById('foregroundColor').value.replace('#', '');
+    const border = document.getElementById('borderColor').value.replace('#', '');
+    
+    const downloadBtn = document.querySelector('a[download]');
+    if (downloadBtn && '<%= barcode %>') {
+        const originalHref = downloadBtn.href.split('?')[0];
+        downloadBtn.href = `${originalHref}?bg=${bg}&fg=${fg}&border=${border}`;
+    }
+}
+
+// Call this when colors change
+document.querySelectorAll('input[type="color"], .form-control').forEach(input => {
+    input.addEventListener('input', updateDownloadLink);
+});
 
 // Auto-select barcode text when clicked
 document.addEventListener('DOMContentLoaded', function() {
