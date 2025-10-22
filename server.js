@@ -122,7 +122,11 @@ app.post('/generate', async (req, res) => {
       barcodeType = 'qrcode',
       backgroundColor = 'FFFFFF',
       foregroundColor = '000000',
-      borderColor = '000000'
+      borderColor = '000000',
+      activeDate,
+      activeTime = '00:00',
+      endTime = '23:59',
+      allowEarlyAccess = false
     } = req.body;
     
     if (!issuedTo) {
@@ -144,24 +148,26 @@ app.post('/generate', async (req, res) => {
       code,
       issuedTo: issuedTo.trim(),
       purpose: purpose ? purpose.trim() : null,
-      expiresAt
+      expiresAt,
+      activeDate: activeDate ? new Date(activeDate) : null,
+      activeTime: activeTime,
+      endTime: endTime,
+      allowEarlyAccess: !!allowEarlyAccess
     });
     
     await barcode.save();
     
-    // Use production URL directly for QR codes
+    // Use production URL
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://barcodey.vercel.app'  // Replace with your actual Vercel URL
+      ? 'https://bar-event.vercel.app'
       : `${req.protocol}://${req.get('host')}`;
     
-    // Color options
     const colors = {
       background: backgroundColor.replace('#', ''),
       foreground: foregroundColor.replace('#', ''),
       border: borderColor.replace('#', '')
     };
     
-    // Generate barcode image with colors
     const barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl, colors);
     const barcodeDataUrl = `data:image/png;base64,${barcodeImage.toString('base64')}`;
     
@@ -176,7 +182,11 @@ app.post('/generate', async (req, res) => {
         imageBase64: barcodeImage.toString('base64'),
         scanUrl: `${baseUrl}/mobile-scan/${code}`,
         mobileUrl: `${baseUrl}/mobile-scan/${code}`,
-        colors: colors
+        colors: colors,
+        activeDate: barcode.activeDate,
+        activeTime: barcode.activeTime,
+        endTime: barcode.endTime,
+        allowEarlyAccess: barcode.allowEarlyAccess
       },
       error: null
     });
@@ -348,7 +358,56 @@ app.get('/mobile-scan/:code', async (req, res) => {
       });
     }
     
-    // Mark as used
+    // NEW: Time-based access control
+    if (barcode.activeDate) {
+      const now = new Date();
+      const activeDate = new Date(barcode.activeDate);
+      const today = new Date(now.toDateString());
+      const eventDay = new Date(activeDate.toDateString());
+      
+      // Check if before event day
+      if (today < eventDay && !barcode.allowEarlyAccess) {
+        const eventDate = activeDate.toLocaleDateString();
+        return res.render('mobile-result', {
+          result: { 
+            success: false, 
+            message: `Access not available until ${eventDate}`,
+            access: 'denied',
+            issuedTo: barcode.issuedTo
+          }
+        });
+      }
+      
+      // Check if after event day
+      if (today > eventDay) {
+        const eventDate = activeDate.toLocaleDateString();
+        return res.render('mobile-result', {
+          result: { 
+            success: false, 
+            message: `Access was only available on ${eventDate}`,
+            access: 'denied',
+            issuedTo: barcode.issuedTo
+          }
+        });
+      }
+      
+      // Check time window on event day
+      if (barcode.activeTime && barcode.endTime) {
+        const currentTime = now.toTimeString().substring(0, 5); // HH:MM
+        if (currentTime < barcode.activeTime || currentTime > barcode.endTime) {
+          return res.render('mobile-result', {
+            result: { 
+              success: false, 
+              message: `Access available only between ${barcode.activeTime} and ${barcode.endTime} on ${activeDate.toLocaleDateString()}`,
+              access: 'denied',
+              issuedTo: barcode.issuedTo
+            }
+          });
+        }
+      }
+    }
+    
+    // Grant access
     barcode.used = true;
     barcode.usedAt = new Date();
     await barcode.save();

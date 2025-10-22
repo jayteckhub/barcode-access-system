@@ -1,5 +1,3 @@
-const mongoose = require('mongoose');
-
 const barcodeSchema = new mongoose.Schema({
   code: {
     type: String,
@@ -36,34 +34,46 @@ const barcodeSchema = new mongoose.Schema({
   scannerId: {
     type: String,
     trim: true
+  },
+  // NEW: Time-based access control
+  activeDate: {
+    type: Date,
+    default: null
+  },
+  activeTime: {
+    type: String,
+    default: '00:00'
+  },
+  endTime: {
+    type: String,
+    default: '23:59'
+  },
+  allowEarlyAccess: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
 });
 
-// Index for better query performance
-barcodeSchema.index({ used: 1, expiresAt: 1 });
-barcodeSchema.index({ code: 1, used: 1 });
-
-// Static method to generate unique code
-barcodeSchema.statics.generateUniqueCode = function() {
-  const crypto = require('crypto');
-  return crypto.randomBytes(16).toString('hex').toUpperCase();
-};
-
-// Method to mark as used
-barcodeSchema.methods.markAsUsed = function(scannerId = null) {
-  this.used = true;
-  this.usedAt = new Date();
-  if (scannerId) this.scannerId = scannerId;
-  return this.save();
-};
-
-// Check if barcode is valid
-barcodeSchema.methods.isValid = function() {
-  if (this.used) return false;
-  if (this.expiresAt && new Date() > this.expiresAt) return false;
+// Method to check if barcode is currently active
+barcodeSchema.methods.isActive = function() {
+  const now = new Date();
+  const today = new Date().toDateString();
+  
+  // If no active date set, always active
+  if (!this.activeDate) return true;
+  
+  const activeDate = new Date(this.activeDate).toDateString();
+  
+  // Check if today is the active date
+  if (today !== activeDate) return false;
+  
+  // Check time window if set
+  if (this.activeTime && this.endTime) {
+    const currentTime = now.toTimeString().substring(0, 5); // HH:MM
+    return currentTime >= this.activeTime && currentTime <= this.endTime;
+  }
+  
   return true;
 };
-
-module.exports = mongoose.model('Barcode', barcodeSchema);

@@ -53,6 +53,66 @@
                                     <div class="form-text">Set when this barcode should automatically expire.</div>
                                 </div>
 
+                                <!-- Add this section after the expiration settings -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header bg-info text-dark">
+                                                <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Access Schedule</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label for="activeDate" class="form-label">
+                                                                <strong>Active Date</strong>
+                                                            </label>
+                                                            <input type="date" class="form-control" id="activeDate" name="activeDate"
+                                                                min="<%= new Date().toISOString().split('T')[0] %>">
+                                                            <div class="form-text">Only allow scanning on this specific date</div>
+                                                        </div>
+                                                        
+                                                        <div class="form-check form-switch mb-3">
+                                                            <input class="form-check-input" type="checkbox" id="allowEarlyAccess" name="allowEarlyAccess">
+                                                            <label class="form-check-label" for="allowEarlyAccess">
+                                                                Allow Early Access (Before Event Day)
+                                                            </label>
+                                                            <div class="form-text">If unchecked, scanning will be blocked before the active date</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label for="activeTime" class="form-label">Start Time</label>
+                                                            <input type="time" class="form-control" id="activeTime" name="activeTime" value="09:00">
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <label for="endTime" class="form-label">End Time</label>
+                                                            <input type="time" class="form-control" id="endTime" name="endTime" value="17:00">
+                                                        </div>
+                                                        
+                                                        <div class="alert alert-warning small">
+                                                            <i class="fas fa-clock me-2"></i>
+                                                            <strong>Time Zone:</strong> Uses server time (<span id="serverTime"></span>)
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="alert alert-info">
+                                                    <h6><i class="fas fa-shield-alt me-2"></i>Security Benefits:</h6>
+                                                    <ul class="small mb-0">
+                                                        <li>Prevents early scanning before event day</li>
+                                                        <li>Controls exact access times</li>
+                                                        <li>Card remains invalid until scheduled date</li>
+                                                        <li>No PIN required - automatic time-based control</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="mb-4">
                                     <label for="barcodeType" class="form-label">
                                         <strong>Barcode Type</strong>
@@ -230,6 +290,23 @@
                                     </div>
                                     <!-- In the barcode display section, replace the card body with: -->
                                     <div class="card-body text-center">
+                                        <!-- Schedule Information -->
+                                        <% if (barcode.activeDate) { %>
+                                            <div class="alert alert-info mb-3">
+                                                <i class="fas fa-calendar-check me-2"></i>
+                                                <strong>Scheduled Access:</strong> 
+                                                Active on <strong><%= new Date(barcode.activeDate).toLocaleDateString() %></strong> 
+                                                <% if (barcode.activeTime !== '00:00' || barcode.endTime !== '23:59') { %>
+                                                    from <strong><%= barcode.activeTime %> to <%= barcode.endTime %></strong>
+                                                <% } %>
+                                                <% if (!barcode.allowEarlyAccess) { %>
+                                                    <br><small class="text-warning"><i class="fas fa-ban me-1"></i>Early access disabled - scanning blocked before event day</small>
+                                                <% } else { %>
+                                                    <br><small class="text-success"><i class="fas fa-check me-1"></i>Early access enabled</small>
+                                                <% } %>
+                                            </div>
+                                        <% } %>
+
                                         <!-- Large barcode display -->
                                         <div class="mb-3 p-3 border rounded bg-white">
                                             <img src="<%= barcode.image %>" 
@@ -238,47 +315,83 @@
                                                 style="max-width: 300px; max-height: 300px;"
                                                 id="barcodeImage">
                                             <div class="mt-2">
-                                                <small class="text-muted">Scan this code with your phone camera</small>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-qrcode me-1"></i>
+                                                    Scan this code with your phone camera
+                                                    <% if (barcode.activeDate) { %>
+                                                        • Active on: <strong><%= new Date(barcode.activeDate).toLocaleDateString() %></strong>
+                                                    <% } %>
+                                                </small>
                                             </div>
                                         </div>
 
-                                        <!-- Scan URL for testing -->
+                                        <!-- Access Information Card -->
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <div class="card bg-light h-100">
+                                                    <div class="card-body">
+                                                        <h6><i class="fas fa-info-circle me-2 text-primary"></i>Access Details</h6>
+                                                        <div class="text-start small">
+                                                            <p class="mb-1"><strong>Code:</strong> <code><%= barcode.code %></code></p>
+                                                            <p class="mb-1"><strong>Issued To:</strong> <%= barcode.issuedTo %></p>
+                                                            <% if (barcode.purpose) { %>
+                                                                <p class="mb-1"><strong>Purpose:</strong> <%= barcode.purpose %></p>
+                                                            <% } %>
+                                                            <% if (barcode.activeDate) { %>
+                                                                <p class="mb-1"><strong>Active Date:</strong> <%= new Date(barcode.activeDate).toLocaleDateString() %></p>
+                                                                <p class="mb-1"><strong>Time Window:</strong> <%= barcode.activeTime %> - <%= barcode.endTime %></p>
+                                                            <% } else { %>
+                                                                <p class="mb-1"><strong>Status:</strong> <span class="text-success">Always Active</span></p>
+                                                            <% } %>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card bg-light h-100">
+                                                    <div class="card-body">
+                                                        <h6><i class="fas fa-shield-alt me-2 text-success"></i>Security Status</h6>
+                                                        <div class="text-start small">
+                                                            <% if (barcode.activeDate) { %>
+                                                                <p class="mb-1 text-success">
+                                                                    <i class="fas fa-check-circle me-1"></i>
+                                                                    <strong>Time-Restricted Access</strong>
+                                                                </p>
+                                                                <p class="mb-1">• Only works on event day</p>
+                                                                <p class="mb-1">• Prevents accidental early use</p>
+                                                                <p class="mb-1">• Automatic date validation</p>
+                                                            <% } else { %>
+                                                                <p class="mb-1 text-info">
+                                                                    <i class="fas fa-bolt me-1"></i>
+                                                                    <strong>Instant Access</strong>
+                                                                </p>
+                                                                <p class="mb-1">• Works immediately</p>
+                                                                <p class="mb-1">• First scan grants access</p>
+                                                                <p class="mb-1">• No date restrictions</p>
+                                                            <% } %>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Scan URLs -->
                                         <div class="mb-3">
-                                            <strong>Scan URL:</strong>
+                                            <strong>Mobile Scan URL:</strong>
                                             <div class="input-group">
                                                 <input type="text" class="form-control form-control-sm" 
-                                                    value="<%= barcode.scanUrl %>" readonly id="scanUrl">
+                                                    value="<%= barcode.mobileUrl %>" readonly id="mobileUrl">
                                                 <button class="btn btn-outline-secondary btn-sm" type="button" 
-                                                        onclick="copyToClipboard('<%= barcode.scanUrl %>')">
+                                                        onclick="copyToClipboard('<%= barcode.mobileUrl %>')">
                                                     <i class="fas fa-copy"></i>
                                                 </button>
                                             </div>
-                                            <small class="text-muted">This URL is encoded in the QR code</small>
+                                            <small class="text-muted">Phones will open this URL when scanning the QR code</small>
                                         </div>
 
-
-                                        <div class="mb-3">
-                                        <strong>Mobile Scan URL:</strong>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control form-control-sm" 
-                                                value="<%= barcode.mobileUrl %>" readonly id="mobileUrl">
-                                            <button class="btn btn-outline-secondary btn-sm" type="button" 
-                                                    onclick="copyToClipboard('<%= barcode.mobileUrl %>')">
-                                                <i class="fas fa-copy"></i>
-                                            </button>
-                                        </div>
-                                        <small class="text-muted">Phones will open this URL when scanning the QR code</small>
-                                    </div>
-
-                                    <!-- Update the test button -->
-                                    <a href="<%= barcode.mobileUrl %>" 
-                                    class="btn btn-warning me-2"
-                                    target="_blank">
-                                        <i class="fas fa-mobile-alt me-2"></i>Test Mobile Scan
-                                    </a>
                                         <!-- Action buttons -->
-                                        <div class="d-grid gap-2 d-md-block">
-                                            <a href="/download/<%= barcode.code %>" 
+                                        <div class="d-grid gap-2 d-md-block mb-3">
+                                            <a href="/download/<%= barcode.code %>?bg=<%= barcode.colors.background %>&fg=<%= barcode.colors.foreground %>&border=<%= barcode.colors.border %>" 
                                             class="btn btn-success me-2"
                                             download="barcode-<%= barcode.code %>.png">
                                                 <i class="fas fa-download me-2"></i>Download Image
@@ -286,10 +399,10 @@
                                             <button class="btn btn-outline-primary me-2" onclick="printBarcode()">
                                                 <i class="fas fa-print me-2"></i>Print
                                             </button>
-                                            <a href="<%= barcode.scanUrl %>" 
+                                            <a href="<%= barcode.mobileUrl %>" 
                                             class="btn btn-warning me-2"
                                             target="_blank">
-                                                <i class="fas fa-external-link-alt me-2"></i>Test Scan Link
+                                                <i class="fas fa-mobile-alt me-2"></i>Test Mobile Scan
                                             </a>
                                             <a href="/generate" class="btn btn-outline-secondary">
                                                 <i class="fas fa-plus me-2"></i>Generate Another
@@ -300,16 +413,53 @@
                                         <div class="mt-3 p-3 bg-light rounded">
                                             <h6><i class="fas fa-mobile-alt me-2"></i>How to Test Phone Scanning</h6>
                                             <ol class="small text-start">
-                                                <li>Download the QR code image to your phone, OR</li>
-                                                <li>Open this page on your phone and scan the QR code, OR</li>
-                                                <li>Click "Test Scan Link" to simulate scanning</li>
-                                                <li>When scanned, it should automatically show "Access Granted"</li>
+                                                <li><strong>Download</strong> the QR code image to your phone, OR</li>
+                                                <li><strong>Open this page</strong> on your phone and scan the QR code, OR</li>
+                                                <li><strong>Click "Test Mobile Scan"</strong> to simulate scanning</li>
+                                                <li>When scanned, it will:
+                                                    <% if (barcode.activeDate) { %>
+                                                        <ul class="mt-1">
+                                                            <li>Check if today is <strong><%= new Date(barcode.activeDate).toLocaleDateString() %></strong></li>
+                                                            <li>Verify time is between <strong><%= barcode.activeTime %>-<%= barcode.endTime %></strong></li>
+                                                            <li>Show "Access Granted" only if conditions are met</li>
+                                                        </ul>
+                                                    <% } else { %>
+                                                        <strong>immediately show "Access Granted"</strong>
+                                                    <% } %>
+                                                </li>
                                             </ol>
                                             
-                                            <div class="alert alert-info small">
-                                                <i class="fas fa-info-circle me-2"></i>
-                                                <strong>Note:</strong> The QR code contains the URL: <code><%= barcode.scanUrl %></code><br>
-                                                When scanned, phones will open this URL and automatically verify access.
+                                            <!-- Current Status Information -->
+                                            <div class="alert alert-info small mt-2">
+                                                <i class="fas fa-clock me-2"></i>
+                                                <strong>Current Status:</strong> 
+                                                <span id="currentStatus">
+                                                    <% if (barcode.activeDate) { %>
+                                                        <% 
+                                                        const now = new Date();
+                                                        const today = new Date().toDateString();
+                                                        const eventDay = new Date(barcode.activeDate).toDateString();
+                                                        const currentTime = now.toTimeString().substring(0, 5);
+                                                        %>
+                                                        <% if (today < eventDay) { %>
+                                                            <span class="text-warning">⏳ Will be active on <%= new Date(barcode.activeDate).toLocaleDateString() %></span>
+                                                        <% } else if (today > eventDay) { %>
+                                                            <span class="text-danger">❌ Access expired - was only for <%= new Date(barcode.activeDate).toLocaleDateString() %></span>
+                                                        <% } else if (currentTime < barcode.activeTime) { %>
+                                                            <span class="text-warning">⏳ Will be active at <%= barcode.activeTime %></span>
+                                                        <% } else if (currentTime > barcode.endTime) { %>
+                                                            <span class="text-danger">❌ Access ended at <%= barcode.endTime %></span>
+                                                        <% } else { %>
+                                                            <span class="text-success">✅ Active now until <%= barcode.endTime %></span>
+                                                        <% } %>
+                                                    <% } else { %>
+                                                        <span class="text-success">✅ Always active - no date restrictions</span>
+                                                    <% } %>
+                                                </span>
+                                                <br>
+                                                <small class="text-muted">
+                                                    <strong>Server Time:</strong> <span id="serverTime"><%= new Date().toLocaleString() %></span>
+                                                </small>
                                             </div>
                                         </div>
                                     </div>
@@ -402,6 +552,105 @@ function printBarcode() {
         </html>
     `);
     printWindow.document.close();
+}
+
+// Show server time
+document.getElementById('serverTime').textContent = new Date().toString();
+
+// Set default active date to tomorrow
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+document.getElementById('activeDate').value = tomorrow.toISOString().split('T')[0];
+
+// Time validation
+document.getElementById('endTime').addEventListener('change', function() {
+    const startTime = document.getElementById('activeTime').value;
+    const endTime = this.value;
+    
+    if (startTime && endTime && startTime >= endTime) {
+        alert('End time must be after start time');
+        this.value = '17:00';
+    }
+});
+
+// Update the server time every minute
+function updateServerTime() {
+    const now = new Date();
+    document.getElementById('serverTime').textContent = now.toLocaleString();
+}
+setInterval(updateServerTime, 60000);
+
+// Enhanced print function
+function printBarcode() {
+    const barcodeImage = document.getElementById('barcodeImage');
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Print Barcode - <%= barcode.issuedTo %></title>
+                <style>
+                    body { 
+                        text-align: center; 
+                        padding: 40px; 
+                        font-family: Arial, sans-serif;
+                    }
+                    img { 
+                        max-width: 100%; 
+                        height: auto; 
+                        border: 2px solid #333;
+                        border-radius: 10px;
+                    }
+                    .details { 
+                        margin: 20px 0; 
+                        text-align: left;
+                        display: inline-block;
+                    }
+                    .access-info {
+                        background: #f8f9fa;
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin: 15px 0;
+                    }
+                </style>
+            </head>
+            <body>
+                <h2>Access Barcode</h2>
+                <div class="details">
+                    <div class="access-info">
+                        <strong>Issued To:</strong> <%= barcode.issuedTo %><br>
+                        <% if (barcode.purpose) { %>
+                            <strong>Purpose:</strong> <%= barcode.purpose %><br>
+                        <% } %>
+                        <strong>Code:</strong> <%= barcode.code %><br>
+                        <% if (barcode.activeDate) { %>
+                            <strong>Active Date:</strong> <%= new Date(barcode.activeDate).toLocaleDateString() %><br>
+                            <strong>Time:</strong> <%= barcode.activeTime %> - <%= barcode.endTime %><br>
+                        <% } %>
+                    </div>
+                </div>
+                <img src="${barcodeImage.src}" alt="Barcode <%= barcode.code %>">
+                <p><small>Generated on ${new Date().toLocaleString()}</small></p>
+                <script>
+                    window.onload = function() { 
+                        setTimeout(() => {
+                            window.print();
+                            setTimeout(() => window.close(), 500);
+                        }, 500);
+                    }
+                <\/script>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// Update download link with color parameters
+function updateDownloadLink() {
+    const downloadBtn = document.querySelector('a[download]');
+    if (downloadBtn) {
+        const originalHref = downloadBtn.href.split('?')[0];
+        downloadBtn.href = `${originalHref}?bg=<%= barcode.colors.background %>&fg=<%= barcode.colors.foreground %>&border=<%= barcode.colors.border %>`;
+    }
 }
 
 // Color preset function
