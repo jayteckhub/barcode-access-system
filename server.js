@@ -11,6 +11,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -141,6 +145,9 @@ app.get('/generate', (req, res) => {
 
 app.post('/generate', async (req, res) => {
   try {
+    // Log to confirm what was sent from the form
+    console.log('Form data received:', req.body);
+
     const {
       issuedTo,
       purpose,
@@ -148,36 +155,37 @@ app.post('/generate', async (req, res) => {
       activeDate,
       activeTime,
       endTime,
-      allowEarlyAccess,
+      allowEarlyAccess
     } = req.body;
 
-    // Generate a random secure code
     const code = crypto.randomBytes(16).toString('hex').toUpperCase();
 
-    // Handle expiration logic
+    // Handle expiry time
     let expiresAt = null;
     if (expiryHours && !isNaN(expiryHours)) {
       expiresAt = new Date(Date.now() + Number(expiryHours) * 60 * 60 * 1000);
     }
 
-    // Create new barcode document
+    // Create barcode
     const newBarcode = new Barcode({
       code,
       issuedTo,
       purpose: purpose || 'General Access',
       expiresAt,
-      activeDate: activeDate ? new Date(activeDate) : null, // Save actual event date
-      activeTime: activeTime || '00:00', // Default start
-      endTime: endTime || '23:59', // Default end
-      allowEarlyAccess: allowEarlyAccess === 'true', // Checkbox logic
+      activeDate: activeDate ? new Date(activeDate) : null,
+      activeTime: activeTime || '00:00',
+      endTime: endTime || '23:59',
+      allowEarlyAccess: allowEarlyAccess === 'true'
     });
 
     await newBarcode.save();
 
+    console.log('Saved barcode:', newBarcode);
+
     res.render('generate', {
       title: 'Generate Barcode',
       barcode: newBarcode,
-      error: null,
+      error: null
     });
 
   } catch (err) {
@@ -185,10 +193,12 @@ app.post('/generate', async (req, res) => {
     res.render('generate', {
       title: 'Generate Barcode',
       barcode: null,
-      error: 'An error occurred while generating the barcode. Please try again.',
+      error: 'An error occurred while generating the barcode. Please try again.'
     });
   }
 });
+
+
 app.get('/verify', async (req, res) => {
   const { success, error, scannedCode, issuedTo } = req.query;
   
