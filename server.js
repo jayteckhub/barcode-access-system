@@ -628,26 +628,33 @@ app.get('/mobile-scan/:code', async (req, res) => {
       });
     }
     
-    // TIME-BASED ACCESS CONTROL
+    // ENHANCED TIME-BASED ACCESS CONTROL
     if (barcode.activeDate) {
       const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
-      const activeDate = new Date(barcode.activeDate);
-      const eventDay = new Date(activeDate.getFullYear(), activeDate.getMonth(), activeDate.getDate()); // Event day at midnight
       
-      console.log('Time validation details:', {
-        now: now.toISOString(),
-        today: today.toISOString(),
-        activeDate: activeDate.toISOString(),
-        eventDay: eventDay.toISOString(),
-        allowEarlyAccess: barcode.allowEarlyAccess
-      });
+      // Create clean date objects for comparison (time set to 00:00:00)
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const activeDate = new Date(barcode.activeDate);
+      const eventDay = new Date(activeDate.getFullYear(), activeDate.getMonth(), activeDate.getDate());
+      
+      console.log('=== TIME VALIDATION DEBUG ===');
+      console.log('Current time:', now.toString());
+      console.log('Today (clean):', today.toString());
+      console.log('Active date from DB:', barcode.activeDate);
+      console.log('Active date (parsed):', activeDate.toString());
+      console.log('Event day (clean):', eventDay.toString());
+      console.log('Today timestamp:', today.getTime());
+      console.log('Event day timestamp:', eventDay.getTime());
+      console.log('Today < EventDay:', today < eventDay);
+      console.log('Today > EventDay:', today > eventDay);
+      console.log('Today === EventDay:', today.getTime() === eventDay.getTime());
+      console.log('Allow early access:', barcode.allowEarlyAccess);
       
       // Check if we're BEFORE the event day
-      if (today < eventDay) {
-        console.log('Before event day - checking early access');
+      if (today.getTime() < eventDay.getTime()) {
+        console.log('❌ BEFORE EVENT DAY - Checking early access');
         if (!barcode.allowEarlyAccess) {
-          console.log('Early access denied');
+          console.log('❌ EARLY ACCESS DENIED');
           return res.render('mobile-result', {
             result: { 
               success: false, 
@@ -657,13 +664,13 @@ app.get('/mobile-scan/:code', async (req, res) => {
             }
           });
         } else {
-          console.log('Early access allowed');
+          console.log('✅ EARLY ACCESS ALLOWED');
         }
       }
       
       // Check if we're AFTER the event day
-      if (today > eventDay) {
-        console.log('After event day - access denied');
+      if (today.getTime() > eventDay.getTime()) {
+        console.log('❌ AFTER EVENT DAY - ACCESS DENIED');
         return res.render('mobile-result', {
           result: { 
             success: false, 
@@ -676,24 +683,24 @@ app.get('/mobile-scan/:code', async (req, res) => {
       
       // If we're ON the event day, check time window
       if (today.getTime() === eventDay.getTime()) {
-        console.log('On event day - checking time window');
+        console.log('✅ ON EVENT DAY - Checking time window');
         const currentHours = now.getHours().toString().padStart(2, '0');
         const currentMinutes = now.getMinutes().toString().padStart(2, '0');
         const currentTime = `${currentHours}:${currentMinutes}`;
         
-        console.log('Time window check:', {
-          currentTime,
-          activeTime: barcode.activeTime,
-          endTime: barcode.endTime
-        });
+        console.log('Current time (HH:MM):', currentTime);
+        console.log('Active time:', barcode.activeTime);
+        console.log('End time:', barcode.endTime);
+        console.log('Before start time?', currentTime < barcode.activeTime);
+        console.log('After end time?', currentTime > barcode.endTime);
         
         // Check if before start time
         if (currentTime < barcode.activeTime) {
-          console.log('Before start time - access denied');
+          console.log('❌ BEFORE START TIME - ACCESS DENIED');
           return res.render('mobile-result', {
             result: { 
               success: false, 
-              message: `Access available starting at ${barcode.activeTime} on ${activeDate.toLocaleDateString()}`,
+              message: `Access available starting at ${barcode.activeTime}`,
               access: 'denied',
               issuedTo: barcode.issuedTo
             }
@@ -702,25 +709,25 @@ app.get('/mobile-scan/:code', async (req, res) => {
         
         // Check if after end time
         if (currentTime > barcode.endTime) {
-          console.log('After end time - access denied');
+          console.log('❌ AFTER END TIME - ACCESS DENIED');
           return res.render('mobile-result', {
             result: { 
               success: false, 
-              message: `Access ended at ${barcode.endTime} on ${activeDate.toLocaleDateString()}`,
+              message: `Access ended at ${barcode.endTime}`,
               access: 'denied',
               issuedTo: barcode.issuedTo
             }
           });
         }
         
-        console.log('Within time window - access granted');
+        console.log('✅ WITHIN TIME WINDOW - ACCESS GRANTED');
       }
     } else {
-      console.log('No active date set - immediate access granted');
+      console.log('✅ NO ACTIVE DATE SET - IMMEDIATE ACCESS GRANTED');
     }
     
     // If all checks pass, grant access
-    console.log('Granting access to barcode:', barcode.code);
+    console.log('✅ GRANTING ACCESS TO BARCODE:', barcode.code);
     barcode.used = true;
     barcode.usedAt = new Date();
     await barcode.save();
