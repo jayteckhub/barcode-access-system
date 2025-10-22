@@ -388,7 +388,7 @@
                                                download="barcode-<%= barcode.code %>.png">
                                                 <i class="fas fa-download me-2"></i>Download Image
                                             </a>
-                                            <button class="btn btn-outline-primary me-2" onclick="printBarcode()">
+                                            <button class="btn btn-outline-primary me-2" onclick="printBarcode('<%= barcode.issuedTo %>', '<%= barcode.purpose %>', '<%= barcode.code %>', '<%= barcode.activeDate ? new Date(barcode.activeDate).toLocaleDateString() : '' %>', '<%= barcode.activeTime %>', '<%= barcode.endTime %>')">
                                                 <i class="fas fa-print me-2"></i>Print
                                             </button>
                                             <a href="<%= barcode.mobileUrl %>" 
@@ -450,7 +450,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set default active date to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    document.getElementById('activeDate').value = tomorrow.toISOString().split('T')[0];
+    const activeDateInput = document.getElementById('activeDate');
+    if (activeDateInput) {
+        activeDateInput.value = tomorrow.toISOString().split('T')[0];
+    }
     
     // Auto-select barcode text when clicked
     const barcodeInput = document.getElementById('barcodeCode');
@@ -464,28 +467,33 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input[type="color"]').forEach(colorInput => {
         const textInput = colorInput.parentElement.querySelector('input[type="text"]');
         
-        colorInput.addEventListener('input', function() {
-            textInput.value = this.value;
-        });
-        
-        textInput.addEventListener('input', function() {
-            const colorInput = this.parentElement.querySelector('input[type="color"]');
-            if (this.value.match(/^#[0-9A-F]{6}$/i)) {
-                colorInput.value = this.value;
-            }
-        });
+        if (colorInput && textInput) {
+            colorInput.addEventListener('input', function() {
+                textInput.value = this.value;
+            });
+            
+            textInput.addEventListener('input', function() {
+                const colorInput = this.parentElement.querySelector('input[type="color"]');
+                if (this.value.match(/^#[0-9A-F]{6}$/i)) {
+                    colorInput.value = this.value;
+                }
+            });
+        }
     });
     
     // Time validation
-    document.getElementById('endTime').addEventListener('change', function() {
-        const startTime = document.getElementById('activeTime').value;
-        const endTime = this.value;
-        
-        if (startTime && endTime && startTime >= endTime) {
-            alert('End time must be after start time');
-            this.value = '17:00';
-        }
-    });
+    const endTimeInput = document.getElementById('endTime');
+    if (endTimeInput) {
+        endTimeInput.addEventListener('change', function() {
+            const startTime = document.getElementById('activeTime').value;
+            const endTime = this.value;
+            
+            if (startTime && endTime && startTime >= endTime) {
+                alert('End time must be after start time');
+                this.value = '17:00';
+            }
+        });
+    }
 });
 
 // Color preset function
@@ -500,17 +508,26 @@ function setColors(bg, fg, border) {
     document.getElementById('borderColorText').value = border;
 }
 
-// Print function
-function printBarcode() {
+// Print function - now takes parameters instead of using EJS variables
+function printBarcode(issuedTo, purpose, code, activeDate, activeTime, endTime) {
     const barcodeImage = document.getElementById('barcodeImage');
+    if (!barcodeImage) {
+        alert('No barcode image found to print');
+        return;
+    }
+    
     const printWindow = window.open('', '_blank');
     
-    const activeDateInfo = '<%= barcode.activeDate ? `Active Date: ${new Date(barcode.activeDate).toLocaleDateString()}<br>Time: ${barcode.activeTime} - ${barcode.endTime}<br>` : "" %>';
+    // Build active date info string
+    let activeDateInfo = '';
+    if (activeDate) {
+        activeDateInfo = `<strong>Active Date:</strong> ${activeDate}<br><strong>Time:</strong> ${activeTime} - ${endTime}<br>`;
+    }
     
     printWindow.document.write(`
         <html>
             <head>
-                <title>Print Barcode - <%= barcode.issuedTo %></title>
+                <title>Print Barcode - ${issuedTo}</title>
                 <style>
                     body { 
                         text-align: center; 
@@ -540,15 +557,13 @@ function printBarcode() {
                 <h2>Access Barcode</h2>
                 <div class="details">
                     <div class="access-info">
-                        <strong>Issued To:</strong> <%= barcode.issuedTo %><br>
-                        <% if (barcode.purpose) { %>
-                            <strong>Purpose:</strong> <%= barcode.purpose %><br>
-                        <% } %>
-                        <strong>Code:</strong> <%= barcode.code %><br>
+                        <strong>Issued To:</strong> ${issuedTo}<br>
+                        ${purpose ? `<strong>Purpose:</strong> ${purpose}<br>` : ''}
+                        <strong>Code:</strong> ${code}<br>
                         ${activeDateInfo}
                     </div>
                 </div>
-                <img src="${barcodeImage.src}" alt="Barcode <%= barcode.code %>">
+                <img src="${barcodeImage.src}" alt="Barcode ${code}">
                 <p><small>Generated on ${new Date().toLocaleString()}</small></p>
                 <script>
                     window.onload = function() { 
