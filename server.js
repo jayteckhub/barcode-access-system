@@ -138,107 +138,54 @@ app.get('/generate', (req, res) => {
 });
 
 // Replace the baseUrl logic in your generate route:
+
 app.post('/generate', async (req, res) => {
   try {
-    const { 
-      issuedTo, 
-      purpose, 
-      expiryHours, 
-      barcodeType = 'qrcode',
-      backgroundColor = 'FFFFFF',
-      foregroundColor = '000000',
-      borderColor = '000000',
+    const {
+      issuedTo,
+      purpose,
+      expiryHours,
       activeDate,
-      activeTime = '09:00',
-      endTime = '17:00',
-      allowEarlyAccess = false
+      activeTime,
+      endTime,
+      allowEarlyAccess,
     } = req.body;
-    
-    console.log('Generate request received:', { issuedTo, barcodeType, activeDate });
-    
-    if (!issuedTo) {
-      return res.render('generate', {
-        title: 'Generate Barcode',
-        barcode: null,
-        error: 'Issued To field is required'
-      });
+
+    // Generate a random secure code
+    const code = crypto.randomBytes(16).toString('hex').toUpperCase();
+
+    // Handle expiration logic
+    let expiresAt = null;
+    if (expiryHours && !isNaN(expiryHours)) {
+      expiresAt = new Date(Date.now() + Number(expiryHours) * 60 * 60 * 1000);
     }
 
-    const code = generateUniqueCode();
-    let expiresAt = null;
-    
-    if (expiryHours && !isNaN(expiryHours)) {
-      expiresAt = new Date(Date.now() + parseInt(expiryHours) * 60 * 60 * 1000);
-    }
-    
-    const barcode = new Barcode({
+    // Create new barcode document
+    const newBarcode = new Barcode({
       code,
-      issuedTo: issuedTo.trim(),
-      purpose: purpose ? purpose.trim() : null,
+      issuedTo,
+      purpose: purpose || 'General Access',
       expiresAt,
-      activeDate: activeDate ? new Date(activeDate) : null,
-      activeTime: activeTime,
-      endTime: endTime,
-      allowEarlyAccess: !!allowEarlyAccess
+      activeDate: activeDate ? new Date(activeDate) : null, // Save actual event date
+      activeTime: activeTime || '00:00', // Default start
+      endTime: endTime || '23:59', // Default end
+      allowEarlyAccess: allowEarlyAccess === 'true', // Checkbox logic
     });
-    
-    await barcode.save();
-    console.log('Barcode saved to database:', code);
-    
-    // Use production URL directly for QR codes
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://bar-event.vercel.app'  // REPLACE WITH YOUR ACTUAL URL
-      : `${req.protocol}://${req.get('host')}`;
-    
-    console.log('Base URL:', baseUrl);
-    
-    // Color options - ensure colors object exists
-    const colors = {
-      background: backgroundColor ? backgroundColor.replace('#', '') : 'FFFFFF',
-      foreground: foregroundColor ? foregroundColor.replace('#', '') : '000000',
-      border: borderColor ? borderColor.replace('#', '') : '000000'
-    };
-    
-    console.log('Generating barcode image with colors:', colors);
-    
-    // Generate barcode image with colors
-    let barcodeImage;
-    try {
-      barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl, colors);
-      console.log('Barcode image generated successfully, size:', barcodeImage.length);
-    } catch (imageError) {
-      console.error('Barcode image generation failed:', imageError);
-      throw new Error(`Failed to generate barcode image: ${imageError.message}`);
-    }
-    
-    const barcodeDataUrl = `data:image/png;base64,${barcodeImage.toString('base64')}`;
-    
+
+    await newBarcode.save();
+
     res.render('generate', {
       title: 'Generate Barcode',
-      barcode: {
-        code,
-        issuedTo: barcode.issuedTo,
-        purpose: barcode.purpose,
-        expiresAt: barcode.expiresAt,
-        image: barcodeDataUrl,
-        imageBase64: barcodeImage.toString('base64'),
-        scanUrl: `${baseUrl}/mobile-scan/${code}`,
-        mobileUrl: `${baseUrl}/mobile-scan/${code}`,
-        colors: colors,
-        activeDate: barcode.activeDate,
-        activeTime: barcode.activeTime,
-        endTime: barcode.endTime,
-        allowEarlyAccess: barcode.allowEarlyAccess
-      },
-      error: null
+      barcode: newBarcode,
+      error: null,
     });
-    
-  } catch (error) {
-    console.error('Barcode generation error details:', error);
+
+  } catch (err) {
+    console.error('Error generating barcode:', err);
     res.render('generate', {
       title: 'Generate Barcode',
       barcode: null,
-      error: `Failed to generate barcode: ${error.message}`
+      error: 'An error occurred while generating the barcode. Please try again.',
     });
   }
 });
