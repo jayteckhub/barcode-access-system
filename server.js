@@ -38,40 +38,65 @@ const generateUniqueCode = () => {
 // Generate barcode image
 const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
   return new Promise((resolve, reject) => {
-    // Use mobile-scan route for QR codes
-    const encodedText = type === 'qrcode' ? `${baseUrl}/mobile-scan/${text}` : text;
-    
-    // Default colors
-    const defaultColors = {
-      background: 'FFFFFF', // White
-      foreground: '000000', // Black
-      border: '000000'      // Black
-    };
-    
-    // Merge with provided colors
-    const finalColors = { ...defaultColors, ...colors };
-    
-    const options = {
-      bcid: type,
-      text: encodedText,
-      scale: type === 'qrcode' ? 8 : 3,
-      height: 10,
-      includetext: false,
-      backgroundcolor: finalColors.background,
-      barcolor: finalColors.foreground,
-      bordercolor: finalColors.border,
-    };
+    try {
+      // Use mobile-scan route for QR codes
+      const encodedText = type === 'qrcode' ? `${baseUrl}/mobile-scan/${text}` : text;
+      
+      console.log(`Generating ${type} barcode for:`, encodedText);
+      
+      // Default colors with fallbacks
+      const defaultColors = {
+        background: 'FFFFFF',
+        foreground: '000000', 
+        border: '000000'
+      };
+      
+      // Merge with provided colors
+      const finalColors = { ...defaultColors, ...colors };
+      
+      // Clean color values (remove # if present)
+      const cleanColors = {
+        background: finalColors.background.replace('#', ''),
+        foreground: finalColors.foreground.replace('#', ''),
+        border: finalColors.border.replace('#', '')
+      };
+      
+      console.log('Final colors after cleaning:', cleanColors);
+      
+      const options = {
+        bcid: type,
+        text: encodedText,
+        scale: type === 'qrcode' ? 8 : 3,
+        height: 10,
+        includetext: false,
+        backgroundcolor: cleanColors.background,
+        barcolor: cleanColors.foreground,
+        bordercolor: cleanColors.border,
+      };
 
-    // For QR codes, we can adjust the style
-    if (type === 'qrcode') {
-      options.scale = 8;
-      options.height = 10;
+      // For QR codes - optimize for mobile scanning
+      if (type === 'qrcode') {
+        options.scale = 8;
+        options.height = 10;
+        options.includetext = false;
+      }
+
+      console.log('BWIP-JS options:', options);
+
+      bwipjs.toBuffer(options, (err, png) => {
+        if (err) {
+          console.error('BWIP-JS generation error:', err);
+          reject(new Error(`Barcode rendering failed: ${err.message}`));
+        } else {
+          console.log('BWIP-JS generated image successfully, size:', png.length);
+          resolve(png);
+        }
+      });
+      
+    } catch (setupError) {
+      console.error('Barcode setup error:', setupError);
+      reject(new Error(`Barcode setup failed: ${setupError.message}`));
     }
-
-    bwipjs.toBuffer(options, (err, png) => {
-      if (err) reject(err);
-      else resolve(png);
-    });
   });
 };
 // MongoDB connection with better error handling
@@ -129,6 +154,8 @@ app.post('/generate', async (req, res) => {
       allowEarlyAccess = false
     } = req.body;
     
+    console.log('Generate request received:', { issuedTo, barcodeType, activeDate });
+    
     if (!issuedTo) {
       return res.render('generate', {
         title: 'Generate Barcode',
@@ -156,11 +183,14 @@ app.post('/generate', async (req, res) => {
     });
     
     await barcode.save();
+    console.log('Barcode saved to database:', code);
     
     // Use production URL directly for QR codes
     const baseUrl = process.env.NODE_ENV === 'production' 
       ? 'https://bar-event.vercel.app'  // REPLACE WITH YOUR ACTUAL URL
       : `${req.protocol}://${req.get('host')}`;
+    
+    console.log('Base URL:', baseUrl);
     
     // Color options - ensure colors object exists
     const colors = {
@@ -169,8 +199,18 @@ app.post('/generate', async (req, res) => {
       border: borderColor ? borderColor.replace('#', '') : '000000'
     };
     
+    console.log('Generating barcode image with colors:', colors);
+    
     // Generate barcode image with colors
-    const barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl, colors);
+    let barcodeImage;
+    try {
+      barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl, colors);
+      console.log('Barcode image generated successfully, size:', barcodeImage.length);
+    } catch (imageError) {
+      console.error('Barcode image generation failed:', imageError);
+      throw new Error(`Failed to generate barcode image: ${imageError.message}`);
+    }
+    
     const barcodeDataUrl = `data:image/png;base64,${barcodeImage.toString('base64')}`;
     
     res.render('generate', {
@@ -184,7 +224,7 @@ app.post('/generate', async (req, res) => {
         imageBase64: barcodeImage.toString('base64'),
         scanUrl: `${baseUrl}/mobile-scan/${code}`,
         mobileUrl: `${baseUrl}/mobile-scan/${code}`,
-        colors: colors, // Make sure colors object is passed
+        colors: colors,
         activeDate: barcode.activeDate,
         activeTime: barcode.activeTime,
         endTime: barcode.endTime,
@@ -194,15 +234,14 @@ app.post('/generate', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Barcode generation error:', error);
+    console.error('Barcode generation error details:', error);
     res.render('generate', {
       title: 'Generate Barcode',
       barcode: null,
-      error: 'Failed to generate barcode. Please try again.'
+      error: `Failed to generate barcode: ${error.message}`
     });
   }
 });
-
 app.get('/verify', (req, res) => {
   const { success, error, scannedCode, issuedTo } = req.query;
   
