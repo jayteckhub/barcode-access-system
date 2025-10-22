@@ -266,6 +266,9 @@ app.post('/verify', async (req, res) => {
   try {
     const { code } = req.body;
     
+    console.log('=== MANUAL VERIFICATION STARTED ===');
+    console.log('Manual verification code:', code);
+    
     if (!code) {
       return res.render('verify', {
         title: 'Verify Barcode',
@@ -291,6 +294,15 @@ app.post('/verify', async (req, res) => {
         scannedCode: code
       });
     }
+    
+    console.log('Barcode found in manual verification:', {
+      code: barcode.code,
+      activeDate: barcode.activeDate,
+      activeTime: barcode.activeTime,
+      endTime: barcode.endTime,
+      allowEarlyAccess: barcode.allowEarlyAccess,
+      used: barcode.used
+    });
     
     if (barcode.used) {
       return res.render('verify', {
@@ -318,7 +330,107 @@ app.post('/verify', async (req, res) => {
       });
     }
     
-    // Mark as used
+    // ADD TIME-BASED ACCESS CONTROL HERE (SAME AS MOBILE-SCAN)
+    if (barcode.activeDate) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
+      const activeDate = new Date(barcode.activeDate);
+      const eventDay = new Date(activeDate.getFullYear(), activeDate.getMonth(), activeDate.getDate()); // Event day at midnight
+      
+      console.log('Manual verification - Time validation details:', {
+        now: now.toISOString(),
+        today: today.toISOString(),
+        activeDate: activeDate.toISOString(),
+        eventDay: eventDay.toISOString(),
+        allowEarlyAccess: barcode.allowEarlyAccess
+      });
+      
+      // Check if we're BEFORE the event day
+      if (today < eventDay) {
+        console.log('Manual verification - Before event day');
+        if (!barcode.allowEarlyAccess) {
+          console.log('Manual verification - Early access denied');
+          return res.render('verify', {
+            title: 'Verify Barcode',
+            result: { 
+              success: false, 
+              message: `Access not available until ${activeDate.toLocaleDateString()}`,
+              access: 'denied',
+              issuedTo: barcode.issuedTo
+            },
+            scannedCode: code
+          });
+        } else {
+          console.log('Manual verification - Early access allowed');
+        }
+      }
+      
+      // Check if we're AFTER the event day
+      if (today > eventDay) {
+        console.log('Manual verification - After event day');
+        return res.render('verify', {
+          title: 'Verify Barcode',
+          result: { 
+            success: false, 
+            message: `Access was only available on ${activeDate.toLocaleDateString()}`,
+            access: 'denied',
+            issuedTo: barcode.issuedTo
+          },
+          scannedCode: code
+        });
+      }
+      
+      // If we're ON the event day, check time window
+      if (today.getTime() === eventDay.getTime()) {
+        console.log('Manual verification - On event day');
+        const currentHours = now.getHours().toString().padStart(2, '0');
+        const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+        const currentTime = `${currentHours}:${currentMinutes}`;
+        
+        console.log('Manual verification - Time window check:', {
+          currentTime,
+          activeTime: barcode.activeTime,
+          endTime: barcode.endTime
+        });
+        
+        // Check if before start time
+        if (currentTime < barcode.activeTime) {
+          console.log('Manual verification - Before start time');
+          return res.render('verify', {
+            title: 'Verify Barcode',
+            result: { 
+              success: false, 
+              message: `Access available starting at ${barcode.activeTime} on ${activeDate.toLocaleDateString()}`,
+              access: 'denied',
+              issuedTo: barcode.issuedTo
+            },
+            scannedCode: code
+          });
+        }
+        
+        // Check if after end time
+        if (currentTime > barcode.endTime) {
+          console.log('Manual verification - After end time');
+          return res.render('verify', {
+            title: 'Verify Barcode',
+            result: { 
+              success: false, 
+              message: `Access ended at ${barcode.endTime} on ${activeDate.toLocaleDateString()}`,
+              access: 'denied',
+              issuedTo: barcode.issuedTo
+            },
+            scannedCode: code
+          });
+        }
+        
+        console.log('Manual verification - Within time window');
+      }
+    } else {
+      console.log('Manual verification - No active date set');
+    }
+    
+    // If all checks pass, grant access
+    console.log('Manual verification - Granting access to:', barcode.code);
     barcode.used = true;
     barcode.usedAt = new Date();
     await barcode.save();
