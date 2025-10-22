@@ -9,9 +9,7 @@
                     <span class="badge bg-light text-dark fs-6">Total: <%= totalBarcodes || 0 %></span>
                 </div>
                 <div class="card-body">
-                    <!-- Always define error variable even if null -->
-                    <% const error = typeof error !== 'undefined' ? error : null; %>
-                    
+                    <!-- Error display - 'error' variable is already passed from the server -->
                     <% if (error) { %>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <i class="fas fa-exclamation-triangle me-2"></i><%= error %>
