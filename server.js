@@ -242,9 +242,111 @@ app.post('/generate', async (req, res) => {
     });
   }
 });
-app.get('/verify', (req, res) => {
+app.get('/verify', async (req, res) => {
   const { success, error, scannedCode, issuedTo } = req.query;
   
+  // If there's a scanned code in query params, process it with time validation
+  if (scannedCode) {
+    try {
+      const barcode = await Barcode.findOne({ code: scannedCode.trim().toUpperCase() });
+      
+      if (barcode && !barcode.used) {
+        console.log('GET verify - Processing scanned code:', scannedCode);
+        
+        // Apply time validation logic
+        if (barcode.activeDate) {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const activeDate = new Date(barcode.activeDate);
+          const eventDay = new Date(activeDate.getFullYear(), activeDate.getMonth(), activeDate.getDate());
+          
+          // Check if before event day
+          if (today < eventDay && !barcode.allowEarlyAccess) {
+            return res.render('verify', {
+              title: 'Verify Barcode',
+              result: { 
+                success: false, 
+                message: `Access not available until ${activeDate.toLocaleDateString()}`,
+                access: 'denied',
+                issuedTo: barcode.issuedTo
+              },
+              scannedCode: scannedCode
+            });
+          }
+          
+          // Check if after event day
+          if (today > eventDay) {
+            return res.render('verify', {
+              title: 'Verify Barcode',
+              result: { 
+                success: false, 
+                message: `Access was only available on ${activeDate.toLocaleDateString()}`,
+                access: 'denied',
+                issuedTo: barcode.issuedTo
+              },
+              scannedCode: scannedCode
+            });
+          }
+          
+          // Check time window on event day
+          if (today.getTime() === eventDay.getTime()) {
+            const currentHours = now.getHours().toString().padStart(2, '0');
+            const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+            const currentTime = `${currentHours}:${currentMinutes}`;
+            
+            if (currentTime < barcode.activeTime) {
+              return res.render('verify', {
+                title: 'Verify Barcode',
+                result: { 
+                  success: false, 
+                  message: `Access available starting at ${barcode.activeTime} on ${activeDate.toLocaleDateString()}`,
+                  access: 'denied',
+                  issuedTo: barcode.issuedTo
+                },
+                scannedCode: scannedCode
+              });
+            }
+            
+            if (currentTime > barcode.endTime) {
+              return res.render('verify', {
+                title: 'Verify Barcode',
+                result: { 
+                  success: false, 
+                  message: `Access ended at ${barcode.endTime} on ${activeDate.toLocaleDateString()}`,
+                  access: 'denied',
+                  issuedTo: barcode.issuedTo
+                },
+                scannedCode: scannedCode
+              });
+            }
+          }
+        }
+        
+        // If time validation passes, mark as used and show success
+        console.log('GET verify - Granting access to:', barcode.code);
+        barcode.used = true;
+        barcode.usedAt = new Date();
+        await barcode.save();
+        
+        return res.render('verify', {
+          title: 'Verify Barcode',
+          result: { 
+            success: true, 
+            message: 'Access Granted',
+            access: 'granted',
+            issuedTo: barcode.issuedTo,
+            purpose: barcode.purpose,
+            usedAt: new Date()
+          },
+          scannedCode: scannedCode
+        });
+      }
+    } catch (error) {
+      console.error('GET verify error:', error);
+    }
+  }
+  
+  // Default render for empty verify page or with query parameters
   let result = null;
   if (success || error) {
     result = {
