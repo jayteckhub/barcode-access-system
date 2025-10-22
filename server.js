@@ -36,6 +36,7 @@ const generateUniqueCode = () => {
 
 // Generate barcode image
 // Generate barcode image with high quality and square dimensions
+// Generate barcode image - UPDATED FOR BETTER SCANNING
 const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
   return new Promise((resolve, reject) => {
     try {
@@ -62,35 +63,35 @@ const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
       
       console.log('Final colors after cleaning:', cleanColors);
       
-    // Optimized options for high-quality square QR codes
-            const options = {
-              bcid: type,
-              text: encodedText,
-              scale: 10, // Balanced quality and size
-              height: 10,
-              width: 10, // Force square dimensions
-              paddingwidth: 30, // More padding for better scanning
-              paddingheight: 30,
-              includetext: false,
-              textxalign: 'center',
-              backgroundcolor: cleanColors.background,
-              barcolor: cleanColors.foreground,
-              bordercolor: cleanColors.border,
-            };
+      // OPTIMIZED FOR MOBILE SCANNING - LARGER SIZE
+      const options = {
+        bcid: type,
+        text: encodedText,
+        scale: 6, // Good balance for mobile scanning
+        height: 20, // Increased height
+        width: 20, // Square dimensions
+        paddingwidth: 40, // More padding for better detection
+        paddingheight: 40,
+        includetext: false,
+        textxalign: 'center',
+        backgroundcolor: cleanColors.background,
+        barcolor: cleanColors.foreground,
+        bordercolor: cleanColors.border,
+      };
 
-            // For QR codes - optimize for high quality
-            if (type === 'qrcode') {
-              options.scale = 10; // Perfect balance for 300-400px display
-              options.height = 10;
-              options.width = 10;
-              options.paddingwidth = 30;
-              options.paddingheight = 30;
-              options.includetext = false;
-              
-              // QR code specific optimizations
-              options.eclevel = 'M'; // Medium error correction
-              options.version = 10; // Auto version selection
-            }
+      // For QR codes - optimize for mobile scanning
+      if (type === 'qrcode') {
+        options.scale = 8; // Larger scale for better quality
+        options.height = 15;
+        options.width = 15;
+        options.paddingwidth = 50; // Even more padding
+        options.paddingheight = 50;
+        options.includetext = false;
+        
+        // QR code specific optimizations for better scanning
+        options.eclevel = 'M'; // Medium error correction
+        options.version = 8; // Appropriate version for the data size
+      }
 
       console.log('BWIP-JS options:', options);
 
