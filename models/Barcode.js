@@ -1,3 +1,6 @@
+// models/Barcode.js
+const mongoose = require('mongoose');
+
 const barcodeSchema = new mongoose.Schema({
   code: {
     type: String,
@@ -35,7 +38,6 @@ const barcodeSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  // NEW: Time-based access control
   activeDate: {
     type: Date,
     default: null
@@ -56,24 +58,22 @@ const barcodeSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Method to check if barcode is currently active
 barcodeSchema.methods.isActive = function() {
   const now = new Date();
   const today = new Date().toDateString();
   
-  // If no active date set, always active
   if (!this.activeDate) return true;
   
   const activeDate = new Date(this.activeDate).toDateString();
   
-  // Check if today is the active date
   if (today !== activeDate) return false;
   
-  // Check time window if set
   if (this.activeTime && this.endTime) {
-    const currentTime = now.toTimeString().substring(0, 5); // HH:MM
+    const currentTime = now.toTimeString().substring(0, 5);
     return currentTime >= this.activeTime && currentTime <= this.endTime;
   }
   
   return true;
 };
+
+module.exports = mongoose.model('Barcode', barcodeSchema);

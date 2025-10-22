@@ -7,6 +7,9 @@ const bwipjs = require('bwip-js');
 const crypto = require('crypto');
 const moment = require('moment');
 
+// Remove the old schema and import the model
+const Barcode = require('./models/Barcode');
+
 
 
 
@@ -24,18 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Barcode Model
-const barcodeSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true },
-  used: { type: Boolean, default: false },
-  issuedTo: { type: String, required: true },
-  issuedAt: { type: Date, default: Date.now },
-  usedAt: { type: Date },
-  purpose: { type: String },
-  expiresAt: { type: Date }
-});
 
-const Barcode = mongoose.model('Barcode', barcodeSchema);
 
 // Generate unique code
 const generateUniqueCode = () => {
