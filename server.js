@@ -124,8 +124,8 @@ app.post('/generate', async (req, res) => {
       foregroundColor = '000000',
       borderColor = '000000',
       activeDate,
-      activeTime = '00:00',
-      endTime = '23:59',
+      activeTime = '09:00',
+      endTime = '17:00',
       allowEarlyAccess = false
     } = req.body;
     
@@ -157,17 +157,19 @@ app.post('/generate', async (req, res) => {
     
     await barcode.save();
     
-    // Use production URL
+    // Use production URL directly for QR codes
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://bar-event.vercel.app'
+      ? 'https://bar-event.vercel.app'  // REPLACE WITH YOUR ACTUAL URL
       : `${req.protocol}://${req.get('host')}`;
     
+    // Color options - ensure colors object exists
     const colors = {
-      background: backgroundColor.replace('#', ''),
-      foreground: foregroundColor.replace('#', ''),
-      border: borderColor.replace('#', '')
+      background: backgroundColor ? backgroundColor.replace('#', '') : 'FFFFFF',
+      foreground: foregroundColor ? foregroundColor.replace('#', '') : '000000',
+      border: borderColor ? borderColor.replace('#', '') : '000000'
     };
     
+    // Generate barcode image with colors
     const barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl, colors);
     const barcodeDataUrl = `data:image/png;base64,${barcodeImage.toString('base64')}`;
     
@@ -182,7 +184,7 @@ app.post('/generate', async (req, res) => {
         imageBase64: barcodeImage.toString('base64'),
         scanUrl: `${baseUrl}/mobile-scan/${code}`,
         mobileUrl: `${baseUrl}/mobile-scan/${code}`,
-        colors: colors,
+        colors: colors, // Make sure colors object is passed
         activeDate: barcode.activeDate,
         activeTime: barcode.activeTime,
         endTime: barcode.endTime,
