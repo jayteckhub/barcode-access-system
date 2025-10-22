@@ -284,21 +284,24 @@
                                         <% } %>
 
                                         <!-- Large barcode display -->
-                                        <div class="mb-3 p-3 border rounded bg-white">
-                                            <img src="<%= barcode.image %>" 
-                                                alt="Barcode <%= barcode.code %>" 
-                                                class="barcode-image img-fluid"
-                                                style="max-width: 300px; max-height: 300px;"
-                                                id="barcodeImage">
-                                            <div class="mt-2">
-                                                <small class="text-muted">
-                                                    <i class="fas fa-qrcode me-1"></i>
-                                                    Scan this code with your phone camera
-                                                    <% if (barcode.activeDate) { %>
-                                                        • Active on: <strong><%= new Date(barcode.activeDate).toLocaleDateString() %></strong>
-                                                    <% } %>
-                                                </small>
+                                      <!-- Sharp, Square Barcode Display -->
+                                        <div class="mb-3 p-4 border rounded bg-white d-flex justify-content-center align-items-center">
+                                            <div class="barcode-square-container" style="width: 320px; height: 320px; display: flex; justify-content: center; align-items: center; background: white;">
+                                                <img src="<%= barcode.image %>" 
+                                                    alt="Barcode <%= barcode.code %>" 
+                                                    class="barcode-image"
+                                                    style="width: 100%; height: 100%; object-fit: contain; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; border: 1px solid #dee2e6; border-radius: 8px;"
+                                                    id="barcodeImage">
                                             </div>
+                                        </div>
+                                        <div class="text-center mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-qrcode me-1"></i>
+                                                Scan this high-quality QR code with your phone camera
+                                                <% if (barcode.activeDate) { %>
+                                                    • Active on: <strong><%= new Date(barcode.activeDate).toLocaleDateString() %></strong>
+                                                <% } %>
+                                            </small>
                                         </div>
 
                                         <!-- Access Information -->

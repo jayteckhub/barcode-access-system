@@ -35,10 +35,10 @@ const generateUniqueCode = () => {
 };
 
 // Generate barcode image
+// Generate barcode image with high quality and square dimensions
 const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
   return new Promise((resolve, reject) => {
     try {
-      // Use mobile-scan route for QR codes
       const encodedText = type === 'qrcode' ? `${baseUrl}/mobile-scan/${text}` : text;
       
       console.log(`Generating ${type} barcode for:`, encodedText);
@@ -62,23 +62,35 @@ const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
       
       console.log('Final colors after cleaning:', cleanColors);
       
-      const options = {
-        bcid: type,
-        text: encodedText,
-        scale: type === 'qrcode' ? 8 : 3,
-        height: 10,
-        includetext: false,
-        backgroundcolor: cleanColors.background,
-        barcolor: cleanColors.foreground,
-        bordercolor: cleanColors.border,
-      };
+    // Optimized options for high-quality square QR codes
+            const options = {
+              bcid: type,
+              text: encodedText,
+              scale: 10, // Balanced quality and size
+              height: 10,
+              width: 10, // Force square dimensions
+              paddingwidth: 30, // More padding for better scanning
+              paddingheight: 30,
+              includetext: false,
+              textxalign: 'center',
+              backgroundcolor: cleanColors.background,
+              barcolor: cleanColors.foreground,
+              bordercolor: cleanColors.border,
+            };
 
-      // For QR codes - optimize for mobile scanning
-      if (type === 'qrcode') {
-        options.scale = 8;
-        options.height = 10;
-        options.includetext = false;
-      }
+            // For QR codes - optimize for high quality
+            if (type === 'qrcode') {
+              options.scale = 10; // Perfect balance for 300-400px display
+              options.height = 10;
+              options.width = 10;
+              options.paddingwidth = 30;
+              options.paddingheight = 30;
+              options.includetext = false;
+              
+              // QR code specific optimizations
+              options.eclevel = 'M'; // Medium error correction
+              options.version = 10; // Auto version selection
+            }
 
       console.log('BWIP-JS options:', options);
 
@@ -779,14 +791,20 @@ app.get('/admin', async (req, res) => {
 });
 
 // Download route
+// Enhanced download route with high-quality square barcodes
 app.get('/download/:code', async (req, res) => {
   try {
     const { code } = req.params;
-    const { bg = 'FFFFFF', fg = '000000', border = '000000' } = req.query;
+    const { 
+      bg = 'FFFFFF', 
+      fg = '000000', 
+      border = '000000',
+      size = '1000' // Default to 1000px for high quality
+    } = req.query;
     
     // Use production URL
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://barcodey.vercel.app/'
+      ? 'https://bar-event.vercel.app'
       : `${req.protocol}://${req.get('host')}`;
     
     const colors = {
@@ -795,10 +813,12 @@ app.get('/download/:code', async (req, res) => {
       border: border.replace('#', '')
     };
     
+    // Generate high-quality barcode
     const barcodeImage = await generateBarcodeImage(code, 'qrcode', baseUrl, colors);
     
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Content-Disposition', `attachment; filename=barcode-${code}.png`);
+    res.setHeader('Cache-Control', 'no-cache');
     res.send(barcodeImage);
     
   } catch (error) {
