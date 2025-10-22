@@ -269,6 +269,22 @@ app.post('/generate', async (req, res) => {
 });
 
 
+// Add this route to reset your database
+app.get('/reset-database', async (req, res) => {
+  try {
+    // Drop the entire barcodes collection
+    await mongoose.connection.db.dropCollection('barcodes');
+    console.log('✅ Barcodes collection dropped');
+    
+    res.json({ 
+      message: 'Database reset successfully. The collection will be recreated with the correct schema.' 
+    });
+  } catch (error) {
+    console.error('Error resetting database:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/verify', async (req, res) => {
   const { success, error, scannedCode, issuedTo } = req.query;
   
