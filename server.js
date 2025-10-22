@@ -355,6 +355,9 @@ app.get('/mobile-scan/:code', async (req, res) => {
   try {
     const { code } = req.params;
     
+    console.log('=== MOBILE SCAN STARTED ===');
+    console.log('Scanned code:', code);
+    
     if (!code) {
       return res.render('mobile-result', {
         result: { 
@@ -368,6 +371,7 @@ app.get('/mobile-scan/:code', async (req, res) => {
     const barcode = await Barcode.findOne({ code: code.trim().toUpperCase() });
     
     if (!barcode) {
+      console.log('Barcode not found in database');
       return res.render('mobile-result', {
         result: { 
           success: false, 
@@ -377,7 +381,17 @@ app.get('/mobile-scan/:code', async (req, res) => {
       });
     }
     
+    console.log('Barcode found:', {
+      code: barcode.code,
+      activeDate: barcode.activeDate,
+      activeTime: barcode.activeTime,
+      endTime: barcode.endTime,
+      allowEarlyAccess: barcode.allowEarlyAccess,
+      used: barcode.used
+    });
+    
     if (barcode.used) {
+      console.log('Barcode already used');
       return res.render('mobile-result', {
         result: { 
           success: false, 
@@ -389,6 +403,7 @@ app.get('/mobile-scan/:code', async (req, res) => {
     }
     
     if (barcode.expiresAt && new Date() > barcode.expiresAt) {
+      console.log('Barcode expired');
       return res.render('mobile-result', {
         result: { 
           success: false, 
@@ -399,56 +414,99 @@ app.get('/mobile-scan/:code', async (req, res) => {
       });
     }
     
-    // NEW: Time-based access control
+    // TIME-BASED ACCESS CONTROL
     if (barcode.activeDate) {
       const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
       const activeDate = new Date(barcode.activeDate);
-      const today = new Date(now.toDateString());
-      const eventDay = new Date(activeDate.toDateString());
+      const eventDay = new Date(activeDate.getFullYear(), activeDate.getMonth(), activeDate.getDate()); // Event day at midnight
       
-      // Check if before event day
-      if (today < eventDay && !barcode.allowEarlyAccess) {
-        const eventDate = activeDate.toLocaleDateString();
-        return res.render('mobile-result', {
-          result: { 
-            success: false, 
-            message: `Access not available until ${eventDate}`,
-            access: 'denied',
-            issuedTo: barcode.issuedTo
-          }
-        });
-      }
+      console.log('Time validation details:', {
+        now: now.toISOString(),
+        today: today.toISOString(),
+        activeDate: activeDate.toISOString(),
+        eventDay: eventDay.toISOString(),
+        allowEarlyAccess: barcode.allowEarlyAccess
+      });
       
-      // Check if after event day
-      if (today > eventDay) {
-        const eventDate = activeDate.toLocaleDateString();
-        return res.render('mobile-result', {
-          result: { 
-            success: false, 
-            message: `Access was only available on ${eventDate}`,
-            access: 'denied',
-            issuedTo: barcode.issuedTo
-          }
-        });
-      }
-      
-      // Check time window on event day
-      if (barcode.activeTime && barcode.endTime) {
-        const currentTime = now.toTimeString().substring(0, 5); // HH:MM
-        if (currentTime < barcode.activeTime || currentTime > barcode.endTime) {
+      // Check if we're BEFORE the event day
+      if (today < eventDay) {
+        console.log('Before event day - checking early access');
+        if (!barcode.allowEarlyAccess) {
+          console.log('Early access denied');
           return res.render('mobile-result', {
             result: { 
               success: false, 
-              message: `Access available only between ${barcode.activeTime} and ${barcode.endTime} on ${activeDate.toLocaleDateString()}`,
+              message: `Access not available until ${activeDate.toLocaleDateString()}`,
+              access: 'denied',
+              issuedTo: barcode.issuedTo
+            }
+          });
+        } else {
+          console.log('Early access allowed');
+        }
+      }
+      
+      // Check if we're AFTER the event day
+      if (today > eventDay) {
+        console.log('After event day - access denied');
+        return res.render('mobile-result', {
+          result: { 
+            success: false, 
+            message: `Access was only available on ${activeDate.toLocaleDateString()}`,
+            access: 'denied',
+            issuedTo: barcode.issuedTo
+          }
+        });
+      }
+      
+      // If we're ON the event day, check time window
+      if (today.getTime() === eventDay.getTime()) {
+        console.log('On event day - checking time window');
+        const currentHours = now.getHours().toString().padStart(2, '0');
+        const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+        const currentTime = `${currentHours}:${currentMinutes}`;
+        
+        console.log('Time window check:', {
+          currentTime,
+          activeTime: barcode.activeTime,
+          endTime: barcode.endTime
+        });
+        
+        // Check if before start time
+        if (currentTime < barcode.activeTime) {
+          console.log('Before start time - access denied');
+          return res.render('mobile-result', {
+            result: { 
+              success: false, 
+              message: `Access available starting at ${barcode.activeTime} on ${activeDate.toLocaleDateString()}`,
               access: 'denied',
               issuedTo: barcode.issuedTo
             }
           });
         }
+        
+        // Check if after end time
+        if (currentTime > barcode.endTime) {
+          console.log('After end time - access denied');
+          return res.render('mobile-result', {
+            result: { 
+              success: false, 
+              message: `Access ended at ${barcode.endTime} on ${activeDate.toLocaleDateString()}`,
+              access: 'denied',
+              issuedTo: barcode.issuedTo
+            }
+          });
+        }
+        
+        console.log('Within time window - access granted');
       }
+    } else {
+      console.log('No active date set - immediate access granted');
     }
     
-    // Grant access
+    // If all checks pass, grant access
+    console.log('Granting access to barcode:', barcode.code);
     barcode.used = true;
     barcode.usedAt = new Date();
     await barcode.save();
@@ -540,6 +598,59 @@ app.get('/download/:code', async (req, res) => {
   } catch (error) {
     console.error('Download error:', error);
     res.status(500).send('Error generating download');
+  }
+});
+
+
+// Test time validation route
+app.get('/test-time-validation', async (req, res) => {
+  try {
+    const testCode = 'TIMETEST123';
+    
+    // Create a test barcode that's only active tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    let barcode = await Barcode.findOne({ code: testCode });
+    
+    if (!barcode) {
+      barcode = new Barcode({
+        code: testCode,
+        issuedTo: 'Time Test User',
+        purpose: 'Testing time validation',
+        activeDate: tomorrow,
+        activeTime: '09:00',
+        endTime: '17:00',
+        allowEarlyAccess: false
+      });
+      await barcode.save();
+    }
+    
+    const now = new Date();
+    const today = new Date(now.toDateString());
+    const eventDay = new Date(tomorrow.toDateString());
+    
+    res.json({
+      testBarcode: {
+        code: barcode.code,
+        activeDate: barcode.activeDate,
+        activeTime: barcode.activeTime,
+        endTime: barcode.endTime,
+        allowEarlyAccess: barcode.allowEarlyAccess
+      },
+      currentTime: {
+        now: now.toISOString(),
+        today: today.toISOString(),
+        eventDay: eventDay.toISOString(),
+        isBeforeEvent: today < eventDay,
+        isAfterEvent: today > eventDay,
+        isSameDay: today.getTime() === eventDay.getTime()
+      },
+      testUrl: `/mobile-scan/${testCode}`
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
