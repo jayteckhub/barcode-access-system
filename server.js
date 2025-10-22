@@ -7,6 +7,9 @@ const bwipjs = require('bwip-js');
 const crypto = require('crypto');
 const moment = require('moment');
 
+
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -145,7 +148,6 @@ app.get('/generate', (req, res) => {
 
 app.post('/generate', async (req, res) => {
   try {
-    // Log to confirm what was sent from the form
     console.log('Form data received:', req.body);
 
     const {
@@ -166,7 +168,7 @@ app.post('/generate', async (req, res) => {
       expiresAt = new Date(Date.now() + Number(expiryHours) * 60 * 60 * 1000);
     }
 
-    // Create barcode
+    // Create new barcode with ALL fields
     const newBarcode = new Barcode({
       code,
       issuedTo,
@@ -175,7 +177,7 @@ app.post('/generate', async (req, res) => {
       activeDate: activeDate ? new Date(activeDate) : null,
       activeTime: activeTime || '00:00',
       endTime: endTime || '23:59',
-      allowEarlyAccess: allowEarlyAccess === 'true'
+      allowEarlyAccess: allowEarlyAccess === 'true' // <-- important checkbox handling
     });
 
     await newBarcode.save();
