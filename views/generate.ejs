@@ -55,63 +55,48 @@
 
                                 <!-- Access Schedule Section -->
                                 <div class="row mb-4">
-                                    <div class="col-12">
+                                        <div class="col-12">
                                         <div class="card">
                                             <div class="card-header bg-info text-dark">
-                                                <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Access Schedule</h5>
+                                            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Access Schedule</h5>
                                             </div>
                                             <div class="card-body">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="mb-3">
-                                                            <label for="activeDate" class="form-label">
-                                                                <strong>Active Date</strong>
-                                                            </label>
-                                                            <input type="date" class="form-control" id="activeDate" name="activeDate"
-                                                                   min="<%= new Date().toISOString().split('T')[0] %>">
-                                                            <div class="form-text">Only allow scanning on this specific date</div>
-                                                        </div>
-                                                        
-                                                        <div class="form-check form-switch mb-3">
-                                                            <input class="form-check-input" type="checkbox" id="allowEarlyAccess" name="allowEarlyAccess" value="true">
-                                                            <label class="form-check-label" for="allowEarlyAccess">
-                                                                Allow Early Access (Before Event Day)
-                                                            </label>
-                                                            <div class="form-text">If unchecked, scanning will be blocked before the active date</div>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div class="col-md-6">
-                                                        <div class="mb-3">
-                                                            <label for="activeTime" class="form-label">Start Time</label>
-                                                            <input type="time" class="form-control" id="activeTime" name="activeTime" value="09:00">
-                                                        </div>
-                                                        
-                                                        <div class="mb-3">
-                                                            <label for="endTime" class="form-label">End Time</label>
-                                                            <input type="time" class="form-control" id="endTime" name="endTime" value="17:00">
-                                                        </div>
-                                                        
-                                                        <div class="alert alert-warning small">
-                                                            <i class="fas fa-clock me-2"></i>
-                                                            <strong>Time Zone:</strong> Uses server time (<span id="serverTimeForm"><%= new Date().toLocaleString() %></span>)
-                                                        </div>
-                                                    </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="activeDate" class="form-label">
+                                                    <strong>Active Date</strong>
+                                                    </label>
+                                                    <input type="date" class="form-control" id="activeDate" name="activeDate"
+                                                        min="<%= new Date().toISOString().split('T')[0] %>">
+                                                    <div class="form-text">Only allow scanning on this specific date</div>
                                                 </div>
                                                 
-                                                <div class="alert alert-info">
-                                                    <h6><i class="fas fa-shield-alt me-2"></i>Security Benefits:</h6>
-                                                    <ul class="small mb-0">
-                                                        <li>Prevents early scanning before event day</li>
-                                                        <li>Controls exact access times</li>
-                                                        <li>Card remains invalid until scheduled date</li>
-                                                        <li>No PIN required - automatic time-based control</li>
-                                                    </ul>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="allowEarlyAccess" name="allowEarlyAccess" value="true">
+                                                    <label class="form-check-label" for="allowEarlyAccess">
+                                                    Allow Early Access (Before Event Day)
+                                                    </label>
+                                                    <div class="form-text">If unchecked, scanning will be blocked before the active date</div>
+                                                </div>
+                                                </div>
+                                                
+                                                <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="activeTime" class="form-label">Start Time</label>
+                                                    <input type="time" class="form-control" id="activeTime" name="activeTime" value="09:00">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="endTime" class="form-label">End Time</label>
+                                                    <input type="time" class="form-control" id="endTime" name="endTime" value="17:00">
+                                                </div>
                                                 </div>
                                             </div>
+                                            </div>
+                                        </div>
                                         </div>
                                     </div>
-                                </div>
 
                                 <div class="mb-4">
                                     <label for="barcodeType" class="form-label">

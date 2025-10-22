@@ -148,54 +148,122 @@ app.get('/generate', (req, res) => {
 
 app.post('/generate', async (req, res) => {
   try {
-    console.log('Form data received:', req.body);
-
-    const {
-      issuedTo,
-      purpose,
-      expiryHours,
+    const { 
+      issuedTo, 
+      purpose, 
+      expiryHours, 
+      barcodeType = 'qrcode',
+      backgroundColor = 'FFFFFF',
+      foregroundColor = '000000',
+      borderColor = '000000',
       activeDate,
-      activeTime,
-      endTime,
-      allowEarlyAccess
+      activeTime = '09:00',
+      endTime = '17:00',
+      allowEarlyAccess = false
     } = req.body;
-
-    const code = crypto.randomBytes(16).toString('hex').toUpperCase();
-
-    // Handle expiry time
-    let expiresAt = null;
-    if (expiryHours && !isNaN(expiryHours)) {
-      expiresAt = new Date(Date.now() + Number(expiryHours) * 60 * 60 * 1000);
+    
+    console.log('=== GENERATE REQUEST - RAW FORM DATA ===');
+    console.log('All form fields:', req.body);
+    console.log('Schedule fields:', {
+      activeDate: activeDate,
+      activeTime: activeTime,
+      endTime: endTime,
+      allowEarlyAccess: allowEarlyAccess,
+      allowEarlyAccessType: typeof allowEarlyAccess
+    });
+    
+    if (!issuedTo) {
+      return res.render('generate', {
+        title: 'Generate Barcode',
+        barcode: null,
+        error: 'Issued To field is required'
+      });
     }
 
-    // Create new barcode with ALL fields
-    const newBarcode = new Barcode({
+    const code = generateUniqueCode();
+    let expiresAt = null;
+    
+    if (expiryHours && !isNaN(expiryHours)) {
+      expiresAt = new Date(Date.now() + parseInt(expiryHours) * 60 * 60 * 1000);
+    }
+    
+    // Prepare barcode data with explicit logging
+    const barcodeData = {
       code,
-      issuedTo,
-      purpose: purpose || 'General Access',
+      issuedTo: issuedTo.trim(),
+      purpose: purpose ? purpose.trim() : null,
       expiresAt,
       activeDate: activeDate ? new Date(activeDate) : null,
-      activeTime: activeTime || '00:00',
-      endTime: endTime || '23:59',
-      allowEarlyAccess: allowEarlyAccess === 'true' // <-- important checkbox handling
+      activeTime: activeTime,
+      endTime: endTime,
+      allowEarlyAccess: allowEarlyAccess === 'true' || allowEarlyAccess === true
+    };
+    
+    console.log('=== BARCODE DATA BEFORE SAVE ===');
+    console.log('Full barcode data:', JSON.stringify(barcodeData, null, 2));
+    console.log('Active date value:', barcodeData.activeDate);
+    console.log('Active date type:', typeof barcodeData.activeDate);
+    console.log('Allow early access value:', barcodeData.allowEarlyAccess);
+    console.log('Allow early access type:', typeof barcodeData.allowEarlyAccess);
+    
+    const barcode = new Barcode(barcodeData);
+    
+    // Save to database with detailed logging
+    console.log('=== SAVING TO DATABASE ===');
+    const savedBarcode = await barcode.save();
+    
+    console.log('=== AFTER SAVE - DATABASE RECORD ===');
+    console.log('Saved barcode ID:', savedBarcode._id);
+    console.log('All fields in saved document:', Object.keys(savedBarcode.toObject()));
+    console.log('Schedule fields in saved document:', {
+      activeDate: savedBarcode.activeDate,
+      activeTime: savedBarcode.activeTime,
+      endTime: savedBarcode.endTime,
+      allowEarlyAccess: savedBarcode.allowEarlyAccess
     });
-
-    await newBarcode.save();
-
-    console.log('Saved barcode:', newBarcode);
-
+    
+    // Use production URL
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://bar-event.vercel.app'
+      : `${req.protocol}://${req.get('host')}`;
+    
+    // Color options
+    const colors = {
+      background: backgroundColor ? backgroundColor.replace('#', '') : 'FFFFFF',
+      foreground: foregroundColor ? foregroundColor.replace('#', '') : '000000',
+      border: borderColor ? borderColor.replace('#', '') : '000000'
+    };
+    
+    // Generate barcode image
+    const barcodeImage = await generateBarcodeImage(code, barcodeType, baseUrl, colors);
+    const barcodeDataUrl = `data:image/png;base64,${barcodeImage.toString('base64')}`;
+    
     res.render('generate', {
       title: 'Generate Barcode',
-      barcode: newBarcode,
+      barcode: {
+        code: savedBarcode.code,
+        issuedTo: savedBarcode.issuedTo,
+        purpose: savedBarcode.purpose,
+        expiresAt: savedBarcode.expiresAt,
+        image: barcodeDataUrl,
+        imageBase64: barcodeImage.toString('base64'),
+        scanUrl: `${baseUrl}/mobile-scan/${code}`,
+        mobileUrl: `${baseUrl}/mobile-scan/${code}`,
+        colors: colors,
+        activeDate: savedBarcode.activeDate,
+        activeTime: savedBarcode.activeTime,
+        endTime: savedBarcode.endTime,
+        allowEarlyAccess: savedBarcode.allowEarlyAccess
+      },
       error: null
     });
-
-  } catch (err) {
-    console.error('Error generating barcode:', err);
+    
+  } catch (error) {
+    console.error('Barcode generation error:', error);
     res.render('generate', {
       title: 'Generate Barcode',
       barcode: null,
-      error: 'An error occurred while generating the barcode. Please try again.'
+      error: 'Failed to generate barcode. Please try again.'
     });
   }
 });
