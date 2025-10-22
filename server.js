@@ -100,22 +100,63 @@ const generateBarcodeImage = (text, type = 'qrcode', baseUrl, colors = {}) => {
   });
 };
 // MongoDB connection with better error handling
+// Enhanced MongoDB connection with better error handling
+// Fixed MongoDB connection with updated options
 const connectDB = async () => {
   try {
     // Use MongoDB Atlas connection string from environment variables
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/barcode_access_system';
     
-    await mongoose.connect(mongoUri, {
+    console.log('Attempting to connect to MongoDB...');
+    
+    // Updated mongoose options for newer versions
+    const mongooseOptions = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    });
+      serverSelectionTimeoutMS: 30000, // 30 seconds
+      socketTimeoutMS: 45000, // 45 seconds,
+      maxPoolSize: 10, // Maximum number of sockets in the connection pool
+      minPoolSize: 1, // Minimum number of sockets in the connection pool
+    };
+
+    await mongoose.connect(mongoUri, mongooseOptions);
     
     console.log('✅ MongoDB connected successfully');
+    
+    // Event listeners for connection status
+    mongoose.connection.on('connected', () => {
+      console.log('✅ Mongoose connected to MongoDB');
+    });
+
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ Mongoose connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('⚠️ Mongoose disconnected from MongoDB');
+    });
+
+    // Close connection when app is terminated
+    process.on('SIGINT', async () => {
+      await mongoose.connection.close();
+      console.log('MongoDB connection closed due to app termination');
+      process.exit(0);
+    });
+    
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
-    // Don't exit process in serverless environment
+    console.error('❌ MongoDB connection failed:', error.message);
+    console.log('Please check your MONGODB_URI environment variable');
+    
+    // Don't exit in production - allow the app to run and show error pages
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Running in development mode with limited functionality');
+    }
   }
 };
+
+
+
+
 
 // Connect to database
 connectDB();
@@ -164,6 +205,16 @@ app.post('/generate', async (req, res) => {
       });
     }
 
+    // Check MongoDB connection first
+    if (mongoose.connection.readyState !== 1) {
+      console.error('MongoDB not connected. Ready state:', mongoose.connection.readyState);
+      return res.render('generate', {
+        title: 'Generate Barcode',
+        barcode: null,
+        error: 'Database connection unavailable. Please try again.'
+      });
+    }
+
     const code = generateUniqueCode();
     let expiresAt = null;
     
@@ -171,7 +222,9 @@ app.post('/generate', async (req, res) => {
       expiresAt = new Date(Date.now() + parseInt(expiryHours) * 60 * 60 * 1000);
     }
     
-    const barcode = new Barcode({
+    console.log('Creating barcode document...');
+    
+    const barcodeData = {
       code,
       issuedTo: issuedTo.trim(),
       purpose: purpose ? purpose.trim() : null,
@@ -180,10 +233,20 @@ app.post('/generate', async (req, res) => {
       activeTime: activeTime,
       endTime: endTime,
       allowEarlyAccess: !!allowEarlyAccess
-    });
+    };
     
-    await barcode.save();
-    console.log('Barcode saved to database:', code);
+    console.log('Barcode data to save:', barcodeData);
+    
+    const barcode = new Barcode(barcodeData);
+    
+    // Save with timeout
+    try {
+      await barcode.save({ timeout: 30000 }); // 30 second timeout
+      console.log('Barcode saved to database:', code);
+    } catch (saveError) {
+      console.error('Failed to save barcode:', saveError);
+      throw new Error(`Database save failed: ${saveError.message}`);
+    }
     
     // Use production URL directly for QR codes
     const baseUrl = process.env.NODE_ENV === 'production' 
@@ -235,13 +298,24 @@ app.post('/generate', async (req, res) => {
     
   } catch (error) {
     console.error('Barcode generation error details:', error);
+    
+    let errorMessage = 'Failed to generate barcode. Please try again.';
+    
+    if (error.message.includes('timed out') || error.message.includes('buffering')) {
+      errorMessage = 'Database connection timeout. Please check your MongoDB connection.';
+    } else if (error.message.includes('MongoNetworkError')) {
+      errorMessage = 'Database connection failed. Please check your MongoDB URI.';
+    }
+    
     res.render('generate', {
       title: 'Generate Barcode',
       barcode: null,
-      error: `Failed to generate barcode: ${error.message}`
+      error: errorMessage
     });
   }
 });
+
+
 app.get('/verify', async (req, res) => {
   const { success, error, scannedCode, issuedTo } = req.query;
   
@@ -854,13 +928,41 @@ app.get('/test-time-validation', async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    environment: process.env.NODE_ENV || 'development'
-  });
+// Database health check
+app.get('/health', async (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
+  const statusText = {
+    0: 'disconnected',
+    1: 'connected', 
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+  
+  try {
+    // Test database operation
+    const testDoc = new Barcode({
+      code: 'HEALTH_CHECK',
+      issuedTo: 'Health Check',
+      purpose: 'Database connection test'
+    });
+    
+    await testDoc.save();
+    await Barcode.deleteOne({ code: 'HEALTH_CHECK' });
+    
+    res.json({
+      status: 'healthy',
+      database: statusText[dbStatus],
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'unhealthy',
+      database: statusText[dbStatus],
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Error handling middleware
